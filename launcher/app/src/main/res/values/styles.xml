@@ -35,6 +35,19 @@
         <item name="android:drawablePadding">0dp</item>
     </style>
 
+    <!-- continue watching (fork): Small caps label for the Continue watching header. -->
+    <style name="Caption">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textColor">#8CFFFFFF</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:fontFamily">@string/font_medium</item>
+        <item name="android:letterSpacing">0.22</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:layout_marginBottom">8dp</item>
+    </style>
+    <!-- end continue watching (fork) -->
+
     <style name="SettingsRow">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">52dp</item>

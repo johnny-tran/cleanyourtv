@@ -143,6 +143,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private AppAdapter adapter;
     private RecyclerView grid;
+    // ---- continue watching (fork) ----
+    private WatchNextRow watchNextRow;
+    private View watchBlock;
+    private boolean watchNextEnabled;
+    // ---- /continue watching (fork) ----
     private FrameLayout root;
     private WallpaperPlayer wallpaperPlayer;
     private GlassView glass;
@@ -481,6 +486,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         advancedEffects = cfg.animations && cfg.advancedEffects;
         reducedMotion = cfg.reducedMotion;
         dockRow = cfg.dockRow;
+        watchNextEnabled = cfg.watchNext;   // ---- continue watching (fork) ----
         singleRow = cfg.singleRow;
         focusOvershoot = cfg.focusOvershoot;
         festival = cfg.festival;
@@ -703,6 +709,29 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         adapter.setSavedOrder(Order.ranks(savedOrder, dockApps), Order.docked(savedOrder, dockApps));
         grid.setAdapter(adapter);
 
+        // ---- continue watching (fork) ---- The Watch Next row, above the dock. Off unless watch_next is set.
+        watchBlock = findViewById(R.id.watchBlock);
+        if (watchNextEnabled) {
+            watchNextRow = new WatchNextRow(new WatchNextRow.Host() {
+                @Override public Activity activity() { return MainActivity.this; }
+                @Override public void onRowFocus(boolean inRow) {
+                    // The row draws its own lift and label; hide the tile highlight while focus is in it.
+                    if (inRow) hideGlass();
+                }
+                @Override public void onLeaveUp(View from) {
+                    firstTopButton().requestFocus();
+                }
+                @Override public void onLeaveDown() {
+                    focusTile(singleRow ? lastFocused : lastFocused % COLUMNS);
+                }
+            }, findViewById(R.id.watchBlock), watchBlock, findViewById(R.id.watchScroll), findViewById(R.id.watchRow));
+            watchBlock.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> layoutWatchRow());
+            grid.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> layoutWatchRow());
+        } else {
+            watchBlock.setVisibility(View.GONE);
+        }
+        // ---- /continue watching (fork) ----
+
         // tvOS layout: push the dock row towards the bottom of the screen, leaving room for
         // rows_below_dock grid rows under it; the rest of the grid stays below until you press Down.
         int rowsBelowDock = cfg.rowsBelowDock;
@@ -904,6 +933,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
             if (keyCode == KeyEvent.KEYCODE_DPAD_UP) return true;
             if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                // ---- continue watching (fork) ---- Down from the top bar enters the Watch Next row when
+                // it is showing, so the row is reachable without going through the dock.
+                if (watchNextRow != null && watchNextRow.visible()) {
+                    watchNextRow.focus();
+                    return true;
+                }
                 // Back to the dock tile Up came from, not wherever the focus finder lands.
                 focusTile(singleRow ? lastFocused : lastFocused % COLUMNS);
                 return true;
@@ -1119,6 +1154,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 break;
         }
         if (openLiveTvAfterBoot()) return;
+        refreshWatchNext();   // ---- continue watching (fork) ----
         updateGreeting();
         updatePanel();
         // Back from an app opened from its tile, focus is still on that tile, so the cinematic "Last opened" line kept
@@ -1913,6 +1949,26 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
     }
 
+    // ---- continue watching (fork) ----
+
+    /** Places the Watch Next row right above the parked dock, mirroring how the top shelf is anchored. */
+    private void layoutWatchRow() {
+        if (watchNextRow == null || watchBlock == null || grid.getHeight() == 0) return;
+        if (watchBlock.getVisibility() != View.VISIBLE) return;
+        Rect g = new Rect(0, 0, grid.getWidth(), grid.getHeight());
+        root.offsetDescendantRectToMyCoords(grid, g);
+        float anchor = g.top + grid.getPaddingTop() - 4 * density;   // top of the parked dock band
+        watchBlock.setY(anchor - watchBlock.getHeight());
+    }
+
+    /** Re-reads Watch Next in onResume and repositions the row once it is (re)built. */
+    private void refreshWatchNext() {
+        if (watchNextRow == null) return;
+        watchNextRow.refresh(this::layoutWatchRow);
+    }
+
+    // ---- /continue watching (fork) ----
+
     // ---- top shelf -------------------------------------------------------------------------------
 
     private void showHero(int position, float dockTopInRoot) {
@@ -2463,7 +2519,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     rtlAppGrid, keyCode == KeyEvent.KEYCODE_DPAD_LEFT);
         }
         if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
-            if (position < COLUMNS) return false;          // dock row: let focus move to the top bar
+            if (position < COLUMNS) {                      // dock row
+                // ---- continue watching (fork) ---- Up from the dock enters the Watch Next row when it is
+                // showing, else leaves for the top bar as before.
+                if (watchNextRow != null && watchNextRow.visible()) {
+                    watchNextRow.focus();
+                    return true;
+                }
+                return false;
+            }
             target = position - COLUMNS;
         } else {
             int lastRowStart = ((count - 1) / COLUMNS) * COLUMNS;

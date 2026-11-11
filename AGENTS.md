@@ -5,6 +5,8 @@ others) working in this repository. People should start with [README.md](README.
 [CONTRIBUTING.md](CONTRIBUTING.md); this file repeats their rules in the form an agent needs, and links
 to them for the detail.
 
+**Fork:** read [docs/fork.md](docs/fork.md) before `launcher/` work.
+
 ## First: which job are you doing?
 
 | You were asked to | Do this |
