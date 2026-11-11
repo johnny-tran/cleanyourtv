@@ -11,9 +11,8 @@ Coding agents: read this page before changing `launcher/`, and follow it when up
 
 - `upstream` = `Gathin23/cleanyourtv` (the original). Nothing is pushed to it.
 - `origin` = the fork (`johnny-tran/cleanyourtv` on this checkout). `main` and `continue-watching` are here.
-- The feature lives on branch **`continue-watching`**, as one commit. **`main` is a clean copy of
-  `upstream/main`** with no local changes, so a pull is always a fast-forward and the feature is a single
-  commit to rebase.
+- The feature and its UI fixes live on branch **`continue-watching`**. **`main` is a clean copy of
+  `upstream/main`** with no local changes, so a pull is always a fast-forward and the fork commits can be rebased onto it.
 
 ## Update the fork (every upstream update)
 
@@ -21,7 +20,7 @@ Coding agents: read this page before changing `launcher/`, and follow it when up
 git checkout main
 git fetch upstream && git merge --ff-only upstream/main     # fast-forward, no merge commit
 git checkout continue-watching
-git rebase main                                             # replay the one feature commit
+git rebase main                                             # replay the fork commits
 git push --force-with-lease origin continue-watching        # the rebase rewrote the branch
 tools/docker-build.sh launcher testReleaseUnitTest lintRelease assembleRelease
 SKIP_BUILD=1 TV_HOST=<tv ip> launcher/build-and-install.sh
@@ -40,16 +39,22 @@ New files (cannot conflict):
 - `launcher/app/src/main/java/com/gathin/tvhome/WatchNext.java` — the Watch Next provider query.
 - `launcher/app/src/main/java/com/gathin/tvhome/PosterLoader.java` — poster download and cache.
 - `launcher/app/src/main/java/com/gathin/tvhome/WatchNextRow.java` — the row: its view, render and focus.
+- `launcher/app/src/main/java/com/gathin/tvhome/WatchNextScrollView.java` — focus scrolling that preserves the row's margins.
+- `launcher/app/src/main/java/com/gathin/tvhome/TileFocus.java` — shared app/poster focus motion and colour rules.
+- `launcher/app/src/main/java/com/gathin/tvhome/TopBarNavigation.java` — keeps horizontal icon navigation out of the poster row.
 - `launcher/app/src/main/res/layout/item_watch.xml` — one watch card.
 
 Edited files, each marked with a `continue watching (fork)` comment where possible:
 - `launcher/app/src/main/AndroidManifest.xml` — the `READ_TV_LISTINGS` and `INTERNET` permissions.
 - `launcher/app/src/main/java/com/gathin/tvhome/Config.java` and `res/values/config.xml` — the `watch_next`
   boolean, off by default.
+- `launcher/app/src/main/java/com/gathin/tvhome/AppAdapter.java` — delegates focus motion to `TileFocus`; shares corner and artwork colour rules with posters.
+- `launcher/app/src/main/res/layout/item_app.xml` — shares the `TileName` style with poster labels.
+- `launcher/app/src/main/java/com/gathin/tvhome/GlassView.java` — morphs the shared highlight between poster and app tile sizes.
 - `launcher/app/src/main/java/com/gathin/tvhome/MainActivity.java` — build the row, refresh it in
   `onResume`, lay it above the dock, route the D-pad in and out.
 - `launcher/app/src/main/res/layout/activity_main.xml` — the row's container.
-- `launcher/app/src/main/res/values/strings.xml`, `styles.xml` — the header string and its `Caption` style.
+- `launcher/app/src/main/res/values/strings.xml`, `styles.xml` — the header string, its `Caption` style and shared `TileName` style.
 - `themes/README.md`, `docs/switches.md` — the `watch_next` key's rows, which the repository's own tests
   require of any new key.
 

@@ -55,14 +55,7 @@
 
     <TextView
         android:id="@+id/name"
+        style="@style/TileName"
         android:layout_width="160dp"
-        android:layout_height="22dp"
-        android:layout_marginTop="96dp"
-        android:gravity="center"
-        android:singleLine="true"
-        android:ellipsize="end"
-        android:alpha="0"
-        android:textColor="#F2FFFFFF"
-        android:textSize="13sp"
-        android:fontFamily="@string/font_medium" />
+        android:layout_marginTop="96dp" />
 </FrameLayout>

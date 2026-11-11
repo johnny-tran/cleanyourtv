@@ -156,6 +156,46 @@
             android:visibility="gone" />
     </LinearLayout>
 
+    <!-- continue watching (fork): Continue watching row, positioned above the dock in code
+         (WatchNextRow). Drawn before the app grid so the dock passes over it while it fades out.
+         Hidden when there is nothing to resume. Delete this block to remove the feature. -->
+    <LinearLayout
+        android:id="@+id/watchBlock"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone"
+        android:clipChildren="false">
+
+        <TextView
+            android:id="@+id/watchTitle"
+            style="@style/Caption"
+            android:layout_marginStart="72dp"
+            android:text="@string/continue_watching"
+            android:importantForAccessibility="no" />
+
+        <com.gathin.tvhome.WatchNextScrollView
+            android:id="@+id/watchScroll"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:clipChildren="false"
+            android:clipToPadding="false"
+            android:overScrollMode="never"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:id="@+id/watchRow"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:clipChildren="false"
+                android:clipToPadding="false"
+                android:orientation="horizontal"
+                android:paddingStart="72dp"
+                android:paddingEnd="72dp" />
+        </com.gathin.tvhome.WatchNextScrollView>
+    </LinearLayout>
+    <!-- end continue watching (fork) -->
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -405,44 +445,6 @@
         </FrameLayout>
     </LinearLayout>
 
-    <!-- continue watching (fork): Continue watching row, positioned above the dock in code
-         (WatchNextRow). Hidden when there is nothing to resume. Delete this block to remove the feature. -->
-    <LinearLayout
-        android:id="@+id/watchBlock"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:visibility="gone"
-        android:clipChildren="false">
-
-        <TextView
-            android:id="@+id/watchTitle"
-            style="@style/Caption"
-            android:layout_marginStart="72dp"
-            android:text="@string/continue_watching"
-            android:importantForAccessibility="no" />
-
-        <HorizontalScrollView
-            android:id="@+id/watchScroll"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:clipChildren="false"
-            android:clipToPadding="false"
-            android:overScrollMode="never"
-            android:scrollbars="none">
-
-            <LinearLayout
-                android:id="@+id/watchRow"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:clipChildren="false"
-                android:clipToPadding="false"
-                android:orientation="horizontal"
-                android:paddingStart="72dp"
-                android:paddingEnd="72dp" />
-        </HorizontalScrollView>
-    </LinearLayout>
-    <!-- end continue watching (fork) -->
 
     <!-- The single floating glass highlight that springs between tiles. -->
     <com.gathin.tvhome.GlassView

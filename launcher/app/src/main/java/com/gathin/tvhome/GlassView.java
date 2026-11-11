@@ -1,5 +1,6 @@
 package com.gathin.tvhome;
 
+import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.LinearGradient;
@@ -8,6 +9,8 @@ import android.graphics.RectF;
 import android.graphics.Shader;
 import android.util.AttributeSet;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.animation.DecelerateInterpolator;
 
 /**
  * A translucent glass slab: soft sheen fill, bright top specular, crisp rim and a faint outer glow.
@@ -22,6 +25,8 @@ public class GlassView extends View {
     private final RectF rect = new RectF();
     private final float density;
     private float radius;
+    private final Size size = new Size();
+    private ValueAnimator sizeAnimator;
     /** Glow colour as 0xRRGGBB: white normally, a festival's accent (diya gold) while a festive skin is on. */
     private int glowRgb = 0xFFFFFF;
     /** Glow strength: the white glow stays faint, a coloured one needs more alpha to read as warm light. */
@@ -74,9 +79,51 @@ public class GlassView extends View {
         invalidate();
     }
 
+    /** Retarget from the currently drawn bounds, keeping the rim's stroke width constant during a resize. */
+    void resize(int width, int height, float corner, boolean animate) {
+        boolean changed = size.retarget(width, height, corner);
+        if (!changed && animate) return;
+        if (sizeAnimator != null) sizeAnimator.cancel();
+        // Reserve drawing room once; changing LayoutParams every animation frame would relayout Home.
+        ViewGroup.LayoutParams lp = getLayoutParams();
+        int roomWidth = Math.max(lp.width, width), roomHeight = Math.max(lp.height, height);
+        if (roomWidth != lp.width || roomHeight != lp.height) {
+            lp.width = roomWidth;
+            lp.height = roomHeight;
+            setLayoutParams(lp);
+        }
+        if (!animate) {
+            size.at(1f);
+            applySize();
+            return;
+        }
+        sizeAnimator = ValueAnimator.ofFloat(0f, 1f);
+        sizeAnimator.setDuration(240);
+        sizeAnimator.setInterpolator(new DecelerateInterpolator(1.5f));
+        sizeAnimator.addUpdateListener(animation -> {
+            size.at((float) animation.getAnimatedValue());
+            applySize();
+        });
+        sizeAnimator.start();
+    }
+
+    boolean isSizedFor(int width, int height) {
+        return size.targetWidth == width && size.targetHeight == height;
+    }
+
+    private void applySize() {
+        radius = size.radius;
+        updateShaders(size.height);
+        invalidate();
+    }
+
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
+        updateShaders(size.targetHeight > 0 ? size.height : h);
+    }
+
+    private void updateShaders(float h) {
         fill.setShader(new LinearGradient(0, 0, 0, h, 0x3DFFFFFF, 0x12FFFFFF, Shader.TileMode.CLAMP));
         specular.setShader(new LinearGradient(0, 0, 0, h * 0.45f, 0x66FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP));
     }
@@ -84,7 +131,9 @@ public class GlassView extends View {
     @Override
     protected void onDraw(Canvas canvas) {
         float inset = 6f * density;   // room for the glow
-        rect.set(inset, inset, getWidth() - inset, getHeight() - inset);
+        float width = size.targetWidth > 0 ? size.width : getWidth();
+        float height = size.targetHeight > 0 ? size.height : getHeight();
+        rect.set(inset, inset, width - inset, height - inset);
 
         // Outer glow: thin rings across the inset, each a little fainter, so it fades out smoothly. Three wide
         // strokes left visible bands once the glow took an app's colour at a stronger alpha. The hardware layer
@@ -116,5 +165,35 @@ public class GlassView extends View {
         canvas.restore();
 
         canvas.drawRoundRect(rect, radius, radius, rim);
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        if (sizeAnimator != null) sizeAnimator.cancel();
+        super.onDetachedFromWindow();
+    }
+
+    /** Resize state is separate from the View so interrupted transitions can be regression-tested on the JVM. */
+    static final class Size {
+        float width, height, radius;
+        int targetWidth, targetHeight;
+        private float targetRadius, fromWidth, fromHeight, fromRadius;
+
+        boolean retarget(int w, int h, float r) {
+            if (targetWidth == w && targetHeight == h && targetRadius == r) return false;
+            fromWidth = width;
+            fromHeight = height;
+            fromRadius = radius;
+            targetWidth = w;
+            targetHeight = h;
+            targetRadius = r;
+            return true;
+        }
+
+        void at(float fraction) {
+            width = fromWidth + (targetWidth - fromWidth) * fraction;
+            height = fromHeight + (targetHeight - fromHeight) * fraction;
+            radius = fromRadius + (targetRadius - fromRadius) * fraction;
+        }
     }
 }

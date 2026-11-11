@@ -9,7 +9,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
-import android.view.animation.DecelerateInterpolator;
 import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -29,10 +28,16 @@ import java.util.List;
  */
 final class WatchNextRow {
 
+    /** Finish fading as the rising dock reaches the row's center; scrolling back restores it. */
+    static float scrollAlpha(int scrolled, int rowHeight) {
+        return Math.max(0f, Math.min(1f, 1f - scrolled / (float) Math.max(1f, rowHeight / 2f)));
+    }
+
     interface Host {
         Activity activity();
-        /** True while focus is inside the row, so the launcher can hide its own highlight. */
-        void onRowFocus(boolean inRow);
+        /** Shares the launcher's floating focus highlight and scroll bookkeeping. */
+        void onCardFocused(View card);
+        void onRowScrolled(int dx);
         /** Up from the first row: hand focus back to the launcher (top bar). */
         void onLeaveUp(View from);
         /** Down from the row: hand focus to the dock, the launcher's usual Home focus. */
@@ -45,17 +50,22 @@ final class WatchNextRow {
     private final HorizontalScrollView scroll;
     private final LinearLayout row;
     private final float density;
+    private final Config cfg;
 
     private List<WatchNext.Item> items = Collections.emptyList();
     private int lastFocused;
     private String signature = "";
     private boolean loaded;
 
-    WatchNextRow(Host host, View container, View block, HorizontalScrollView scroll, LinearLayout row) {
+    WatchNextRow(Host host, View container, View block, HorizontalScrollView scroll, LinearLayout row, Config cfg) {
         this.host = host;
+        this.cfg = cfg;
         this.container = container;
         this.block = block;
         this.scroll = scroll;
+        scroll.setOnScrollChangeListener((v, x, y, oldX, oldY) -> {
+            if (focusedCard() != null) host.onRowScrolled(x - oldX);
+        });
         this.row = row;
         this.density = container.getResources().getDisplayMetrics().density;
     }
@@ -120,6 +130,7 @@ final class WatchNextRow {
         card.setContentDescription(item.title);
         fallback.setText(item.title);
         name.setText(item.title);
+        name.setAlpha(cfg.alwaysShowNames ? 0.75f : 0f);
 
         View track = v.findViewById(R.id.progress_track);
         View fill = v.findViewById(R.id.progress_fill);
@@ -136,14 +147,18 @@ final class WatchNextRow {
 
         if (item.art != null) {
             PosterLoader.load(container.getContext(), item.art, poster, (int) (320 * density),
-                    () -> fallback.setVisibility(View.GONE));
+                    () -> {
+                        fallback.setVisibility(View.GONE);
+                        if (card.isFocused()) host.onCardFocused(card);
+                    });
         }
 
         card.setOnFocusChangeListener((view, focused) -> {
-            animateFocus(view, name, focused);
+            TileFocus.animate(view, poster, name, focused, cfg.animations, cfg.advancedEffects,
+                    cfg.reducedMotion, cfg.alwaysShowNames ? 0.75f : 0f, cfg.focusOvershoot, false);
             if (!focused) return;
             lastFocused = index;
-            host.onRowFocus(true);
+            host.onCardFocused(view);
         });
         card.setOnKeyListener((view, keyCode, event) -> {
             if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
@@ -163,7 +178,7 @@ final class WatchNextRow {
         return v;
     }
 
-    private View focusedCard() {
+    View focusedCard() {
         for (int i = 0; i < row.getChildCount(); i++) {
             View card = row.getChildAt(i).findViewById(R.id.watch_card);
             if (card != null && card.isFocused()) return card;
@@ -173,28 +188,12 @@ final class WatchNextRow {
 
     /** The launcher's own tile corner: 16dp at the design width, scaled down with the card. */
     private void roundCorners(View card) {
-        final float radius = 16f * density;
         card.setOutlineProvider(new ViewOutlineProvider() {
             @Override public void getOutline(View view, Outline outline) {
-                outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), radius);
+                outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), AppAdapter.cornerRadius(view.getWidth(), density));
             }
         });
         card.setClipToOutline(true);
-    }
-
-    /** The launcher's lift-and-label focus animation, so the row matches the tiles (AppAdapter.Holder). */
-    private void animateFocus(View card, TextView name, boolean focused) {
-        card.animate().cancel();
-        name.animate().cancel();
-        float s = focused ? AppAdapter.FOCUS_SCALE : 1f;
-        card.animate().scaleX(s).scaleY(s)
-                .translationZ(focused ? 8f * density : 0f)
-                .setDuration(focused ? 260 : 180)
-                .setInterpolator(new DecelerateInterpolator(1.5f))
-                .withLayer().start();
-        name.animate().alpha(focused ? 1f : 0f)
-                .translationY(focused ? density * 4f : -density * 6f)
-                .setDuration(220).start();
     }
 
     private void launch(WatchNext.Item item) {

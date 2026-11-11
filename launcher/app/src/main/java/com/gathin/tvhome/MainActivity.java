@@ -714,17 +714,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (watchNextEnabled) {
             watchNextRow = new WatchNextRow(new WatchNextRow.Host() {
                 @Override public Activity activity() { return MainActivity.this; }
-                @Override public void onRowFocus(boolean inRow) {
-                    // The row draws its own lift and label; hide the tile highlight while focus is in it.
-                    if (inRow) hideGlass();
-                }
+                @Override public void onCardFocused(View card) { onWatchCardFocused(card); }
+                @Override public void onRowScrolled(int dx) { shiftGlass(dx, 0); }
                 @Override public void onLeaveUp(View from) {
-                    firstTopButton().requestFocus();
+                    (btnInputs.getVisibility() == View.VISIBLE ? btnInputs : firstTopButton()).requestFocus();
                 }
                 @Override public void onLeaveDown() {
                     focusTile(singleRow ? lastFocused : lastFocused % COLUMNS);
                 }
-            }, findViewById(R.id.watchBlock), watchBlock, findViewById(R.id.watchScroll), findViewById(R.id.watchRow));
+            }, findViewById(R.id.watchBlock), watchBlock, findViewById(R.id.watchScroll), findViewById(R.id.watchRow), cfg);
             watchBlock.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> layoutWatchRow());
             grid.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> layoutWatchRow());
         } else {
@@ -784,16 +782,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         grid.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(@NonNull RecyclerView rv, int dx, int dy) {
-                if (!glassShown) return;
-                glassTargetY -= dy;
-                glassScrollShift -= dy;
-                glass.setTranslationY(glass.getTranslationY() - dy);
-                // single_row scrolls sideways: the same bookkeeping on the other axis.
-                if (dx != 0) {
-                    glassTargetX -= dx;
-                    glassScrollShiftX -= dx;
-                    glass.setTranslationX(glass.getTranslationX() - dx);
-                }
+                // continue watching (fork): the rising dock covers the shelf as it fades out.
+                layoutWatchRow();
+                if (watchNextRow == null || watchNextRow.focusedCard() == null) shiftGlass(dx, dy);
             }
         });
 
@@ -926,9 +917,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             return true;
         });
 
-        // Keep focus on the top bar at its ends and at the top: Android's focus finder would otherwise
-        // jump to a tile far below when there is nothing in that direction.
-        boolean rtlMenuBar = getResources().getBoolean(R.bool.rtl_menu_bar);
+        // Explicit horizontal navigation keeps focus in the bar: Android's geometric search can
+        // otherwise prefer a Continue watching poster below it, even between two visible buttons.
         View.OnKeyListener pillKeys = (v, keyCode, event) -> {
             if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
             if (keyCode == KeyEvent.KEYCODE_DPAD_UP) return true;
@@ -943,11 +933,23 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 focusTile(singleRow ? lastFocused : lastFocused % COLUMNS);
                 return true;
             }
-            int firstButton = btnInputs.getVisibility() == View.VISIBLE ? R.id.btnInputs : firstTopButton().getId();
-            int leftButton = rtlMenuBar ? R.id.btnSettings : firstButton;
-            int rightButton = rtlMenuBar ? firstButton : R.id.btnSettings;
-            if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) return v.getId() == leftButton;
-            return keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && v.getId() == rightButton;
+            if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                ViewGroup bar = findViewById(R.id.topButtons);
+                boolean[] available = new boolean[bar.getChildCount()];
+                for (int i = 0; i < available.length; i++) {
+                    View button = bar.getChildAt(i);
+                    available[i] = button.getVisibility() == View.VISIBLE && button.isEnabled() && button.isFocusable();
+                }
+                int current = bar.indexOfChild(v);
+                int next = TopBarNavigation.next(available, current, keyCode == KeyEvent.KEYCODE_DPAD_LEFT,
+                        bar.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL);
+                if (next != current && bar.getChildAt(next).requestFocus()) {
+                    v.playSoundEffect(keyCode == KeyEvent.KEYCODE_DPAD_LEFT
+                            ? SoundEffectConstants.NAVIGATION_LEFT : SoundEffectConstants.NAVIGATION_RIGHT);
+                }
+                return true;
+            }
+            return false;
         };
         btnInputs.setOnKeyListener(pillKeys);
         btnWifi.setOnKeyListener(pillKeys);
@@ -969,7 +971,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         // Hide the glass when focus leaves the tiles.
         getWindow().getDecorView().getViewTreeObserver().addOnGlobalFocusChangeListener((oldF, newF) -> {
-            boolean onTile = newF != null && newF.getId() == R.id.card;
+            boolean onTile = newF != null && (newF.getId() == R.id.card || newF.getId() == R.id.watch_card);
             if (!onTile) hideGlass();
         });
 
@@ -1853,56 +1855,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             });
             return;
         }
-        // Tile rect in root coordinates, using layout positions (ignores the scale animation).
+        boolean inDock = DockSlots.inDockRow(dockRow, singleRow, position, COLUMNS);
+        boolean coloured = TileFocus.coloured(appGlow, cinematic, cinematicWhiteFocus, singleRow || position < COLUMNS, festive);
+        showTileGlass(card, adapter.focusScale(), advancedEffects && !inDock,
+                coloured ? adapter.ambientColorAt(position) : 0);
         Rect r = tileRect;
-        r.set(0, 0, card.getWidth(), card.getHeight());
-        root.offsetDescendantRectToMyCoords(card, r);
-        float pad = 6f * density;        // matches GlassView's glow inset
-        float scale = adapter.focusScale();
-        float w = card.getWidth() * scale + 2 * pad;
-        float h = card.getHeight() * scale + 2 * pad;
-        float x = r.exactCenterX() - w / 2f;
-        // advanced_effects lifts a focused grid tile by 4dp and the glass follows it; dock tiles stay put (#2135).
-        boolean lifted = advancedEffects && !DockSlots.inDockRow(dockRow, singleRow, position, COLUMNS);
-        float y = r.exactCenterY() - h / 2f - (lifted ? 4f * density : 0f);
-
-        ViewGroup.LayoutParams lp = glass.getLayoutParams();
-        if (lp.width != (int) w || lp.height != (int) h || card.getWidth() != glassCardW) {
-            lp.width = (int) w;
-            lp.height = (int) h;
-            glass.setLayoutParams(lp);
-            // GlassView draws its slab inset by pad, i.e. exactly over the zoomed tile: same corners as the tile.
-            glass.setRadius(AppAdapter.cornerRadius(card.getWidth(), density) * scale);
-        }
-        glassCardW = card.getWidth();
-        glassCardRect.set(r);
-        glassTargetX = x;
-        glassTargetY = y;
-        // Cinematic shelf: the highlight glows in the dock app's colour, plain white in the grid (and on the dock with
-        // cinematic_white_focus). app_glow: every tile. In a single row every tile is the dock's kind.
-        boolean coloured = (appGlow || cinematic && !cinematicWhiteFocus && (singleRow || position < COLUMNS)) && !festive;
-        int accent = coloured ? adapter.ambientColorAt(position) : 0;
-        if ((cinematic || appGlow) && !festive && accent != glassAccent) {
-            glassAccent = accent;
-            glass.setAccent(accent);
-        }
-        if (!glassShown) {
-            springX.cancel();
-            springY.cancel();
-            glass.setTranslationX(x);
-            glass.setTranslationY(y);
-            if (animations && !reducedMotion) glass.animate().alpha(1f).setDuration(180).start();
-            else glass.setAlpha(1f);
-            glassShown = true;
-        } else if (!animations) {
-            springX.cancel();
-            springY.cancel();
-            glass.setTranslationX(x);
-            glass.setTranslationY(y);
-        } else {
-            springX.animateToFinalPosition(x - glassScrollShiftX);
-            springY.animateToFinalPosition(y - glassScrollShift);
-        }
+        float pad = 6f * density;
         View item = (View) card.getParent();
         if (dockRow && (singleRow || position < COLUMNS)) {
             // Dock: park it at the bottom of the screen and show the top shelf for this app. In a single row
@@ -1927,9 +1885,89 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
     }
 
+    /** Layout bounds, including shelf positioning but excluding the card's animated scale and lift. */
+    private void tileRectInRoot(View card, Rect rect) {
+        root.offsetDescendantRectToMyCoords(card, rect);
+        // offsetDescendantRectToMyCoords includes scroll offsets but ignores translation. The poster
+        // shelf is parked with setY(), so its parent translation must also move the floating highlight.
+        for (View parent = (View) card.getParent(); parent != root; parent = (View) parent.getParent()) {
+            rect.offset(Math.round(parent.getTranslationX()), Math.round(parent.getTranslationY()));
+        }
+    }
+
+    /** The same floating rim, colour, sizing and springs for all Home tiles. */
+    private void showTileGlass(View card, float scale, boolean lifted, int accent) {
+        // Tile rect in root coordinates, using layout positions (ignores the scale animation).
+        Rect r = tileRect;
+        r.set(0, 0, card.getWidth(), card.getHeight());
+        tileRectInRoot(card, r);
+        float pad = 6f * density;        // matches GlassView's glow inset
+        float w = card.getWidth() * scale + 2 * pad;
+        float h = card.getHeight() * scale + 2 * pad;
+        float x = r.exactCenterX() - w / 2f;
+        // advanced_effects lifts a focused grid tile by 4dp and the glass follows it; dock tiles stay put (#2135).
+        float y = r.exactCenterY() - h / 2f - (lifted ? 4f * density : 0f);
+
+        glass.resize((int) w, (int) h, AppAdapter.cornerRadius(card.getWidth(), density) * scale,
+                glassShown && animations && !reducedMotion);
+        glassCardW = card.getWidth();
+        glassCardRect.set(r);
+        glassTargetX = x;
+        glassTargetY = y;
+        if ((cinematic || appGlow) && !festive && accent != glassAccent) {
+            glassAccent = accent;
+            glass.setAccent(accent);
+        }
+        if (!glassShown) {
+            springX.cancel();
+            springY.cancel();
+            glass.setTranslationX(x);
+            glass.setTranslationY(y);
+            if (animations && !reducedMotion) glass.animate().alpha(1f).setDuration(180).start();
+            else glass.setAlpha(1f);
+            glassShown = true;
+        } else if (!animations) {
+            springX.cancel();
+            springY.cancel();
+            glass.setTranslationX(x);
+            glass.setTranslationY(y);
+        } else {
+            springX.animateToFinalPosition(x - glassScrollShiftX);
+            springY.animateToFinalPosition(y - glassScrollShift);
+        }
+    }
+
+    /** Keep the floating highlight attached while either the app grid or the poster row scrolls. */
+    private void shiftGlass(int dx, int dy) {
+        if (!glassShown) return;
+        glassTargetY -= dy;
+        glassScrollShift -= dy;
+        glass.setTranslationY(glass.getTranslationY() - dy);
+        glassTargetX -= dx;
+        glassScrollShiftX -= dx;
+        glass.setTranslationX(glass.getTranslationX() - dx);
+    }
+
+    private void onWatchCardFocused(View card) {
+        if (card.getWidth() == 0) {
+            card.post(() -> { if (card.isFocused() && card.getWidth() > 0) onWatchCardFocused(card); });
+            return;
+        }
+        boolean coloured = TileFocus.coloured(appGlow, cinematic, cinematicWhiteFocus, false, festive);
+        ImageView poster = card.findViewById(R.id.poster);
+        showTileGlass(card, adapter.focusScale(), advancedEffects,
+                coloured ? AppAdapter.vividColor(poster.getDrawable()) : 0);
+    }
+
     /** Refits the glass to the focused holder once the grid layout and tile dimensions settle. */
     private void refitGlass() {
-        if (isDestroyed() || adapter.appCount() == 0 || libraryFocusPending) return;
+        if (isDestroyed() || libraryFocusPending) return;
+        View watchCard = watchNextRow == null ? null : watchNextRow.focusedCard();
+        if (watchCard != null) {
+            onWatchCardFocused(watchCard);
+            return;
+        }
+        if (adapter.appCount() == 0) return;
         int pos = Math.max(0, Math.min(lastFocused, adapter.appCount() - 1));
         RecyclerView.ViewHolder vh = grid.findViewHolderForAdapterPosition(pos);
         View card = vh == null ? null : vh.itemView.findViewById(R.id.card);
@@ -1942,8 +1980,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // cold start can leave the glass at the right size and the wrong place. Comparing the rect catches that.
         Rect r = tileRect;
         r.set(0, 0, card.getWidth(), card.getHeight());
-        root.offsetDescendantRectToMyCoords(card, r);
-        if (!glassShown || card.getWidth() != glassCardW || glass.getWidth() != w || glass.getHeight() != h
+        tileRectInRoot(card, r);
+        if (!glassShown || card.getWidth() != glassCardW || !glass.isSizedFor(w, h)
                 || !glassCardRect.equals(r)) {
             onTileFocused(pos, card);
         }
@@ -1959,6 +1997,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         root.offsetDescendantRectToMyCoords(grid, g);
         float anchor = g.top + grid.getPaddingTop() - 4 * density;   // top of the parked dock band
         watchBlock.setY(anchor - watchBlock.getHeight());
+        int shift = !singleRow && grid.canScrollVertically(-1) ? grid.computeVerticalScrollOffset() : 0;
+        watchBlock.setAlpha(WatchNextRow.scrollAlpha(shift, watchBlock.getHeight()));
+        if (watchNextRow.focusedCard() != null) refitGlass();
     }
 
     /** Re-reads Watch Next in onResume and repositions the row once it is (re)built. */
