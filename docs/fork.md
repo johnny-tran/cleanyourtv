@@ -9,6 +9,16 @@ from upstream.
 
 Coding agents: read this page before changing `launcher/`, and follow it when updating from upstream.
 
+## Keep this page current (required)
+
+Every file you change that upstream does not have must be recorded here. Add it to **What the feature
+touches** below and, when you add a key or a feature, a short section describing it. Keeping this page
+current is what keeps the next upstream rebase conflict-free: it is the fork's map of its own divergence.
+
+`tests/test_fork_docs_track_changes.py` checks it: it diffs this branch against `upstream/main` and fails
+until every changed file is named here. Screenshots, this page and the fork's own JVM tests
+(`launcher/app/src/test/`) are exempt, so you never have to list a `.jpg` or a test one by one.
+
 ## Remotes and branches
 
 - `upstream` = `Gathin23/cleanyourtv` (the original). Nothing is pushed to it.
@@ -48,6 +58,7 @@ New files (cannot conflict):
 - `launcher/app/src/main/res/layout/item_watch.xml` — one watch card.
 
 Edited files, each marked with a `continue watching (fork)` comment where possible:
+- `AGENTS.md` — the one-line pointer to this page, so a coding agent finds it.
 - `launcher/app/src/main/AndroidManifest.xml` — the `READ_TV_LISTINGS` and `INTERNET` permissions.
 - `launcher/app/src/main/java/com/gathin/tvhome/Config.java` and `res/values/config.xml` — the `watch_next`
   boolean, off by default.
