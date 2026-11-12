@@ -1,9 +1,11 @@
 # This checkout is a fork
 
 This repository is a **personal fork** of [Gathin23/cleanyourtv](https://github.com/Gathin23/cleanyourtv).
-It keeps the whole CleanYourTV launcher and adds one feature: a **Continue watching** (Watch Next) row on
-Home, above the dock, ported from [dhruv2003/sony-tv-launcher](https://github.com/dhruv2003/sony-tv-launcher)
-(MIT). Everything else, and every future upstream feature, comes from upstream.
+It keeps the whole CleanYourTV launcher and adds a couple of small features: a **Continue watching**
+(Watch Next) row on Home, above the dock, ported from
+[dhruv2003/sony-tv-launcher](https://github.com/dhruv2003/sony-tv-launcher) (MIT), and a `greeting_text`
+key that replaces the time-of-day greeting. Everything else, and every future upstream feature, comes
+from upstream.
 
 Coding agents: read this page before changing `launcher/`, and follow it when updating from upstream.
 
@@ -49,6 +51,8 @@ Edited files, each marked with a `continue watching (fork)` comment where possib
 - `launcher/app/src/main/AndroidManifest.xml` — the `READ_TV_LISTINGS` and `INTERNET` permissions.
 - `launcher/app/src/main/java/com/gathin/tvhome/Config.java` and `res/values/config.xml` — the `watch_next`
   boolean, off by default.
+- `launcher/app/src/main/java/com/gathin/tvhome/Config.java`, `res/values/config.xml`,
+  `MainActivity.updateGreeting()` and `res/values/strings.xml` — the `greeting_text` key (see below).
 - `launcher/app/src/main/java/com/gathin/tvhome/AppAdapter.java` — delegates focus motion to `TileFocus`; shares corner and artwork colour rules with posters.
 - `launcher/app/src/main/res/layout/item_app.xml` — shares the `TileName` style with poster labels.
 - `launcher/app/src/main/java/com/gathin/tvhome/GlassView.java` — morphs the shared highlight between poster and app tile sizes.
@@ -90,3 +94,10 @@ launcher's private preferences; it does not delete the streaming app's shared en
 The card returns when the app publishes a newer engagement timestamp. Apps that do not share updated
 Watch Next data cannot trigger this automatically. Hold the top-right gear and choose **Restore Continue
 Watching** to clear local removals for all titles still available in the shared feed.
+
+## Replacing the greeting
+
+`greeting_text` (a theme key, or `config.xml`) replaces the time-of-day greeting above the clock
+("Good evening") with the given text; `greeting_name` is still appended after it. Empty keeps the
+time-of-day text. It is a fork addition: a stock CleanYourTV build ignores the key. Rows live in
+`themes/README.md` and `docs/switches.md`, which the repository's own tests require of any new key.
