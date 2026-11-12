@@ -221,6 +221,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private boolean shamsi;
     /** greeting_name: said after the greeting, which is shown in capitals. */
     private String greetingName = "";
+    /** greeting_text: replaces the time-of-day greeting; empty keeps it. */
+    private String greetingText = "";
     /** Optional time-of-day backdrop (config.xml, sky_intensity); 0 keeps it hidden. */
     private SkyView sky;
     private String vpnApp;
@@ -602,6 +604,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         lunarOffset = Lunar.offsetFor(cfg.lunarUtcOffset, Locale.getDefault());
         if (lunar) lunarDate.setVisibility(View.VISIBLE);
         greetingName = cfg.greetingName;
+        greetingText = cfg.greetingText;
         if (cfg.dateBelowClock) moveDateBelowClock();
         if (cfg.hideDate) {
             ((View) findViewById(R.id.date).getParent()).setVisibility(View.GONE);
@@ -2884,8 +2887,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             greeting.setText(festiveGreeting);
             greeting.setTextColor(liftTowardsWhite(festival.accentColor(), 0.25f));
         } else {
-            greeting.setText(greetingName.isEmpty() ? getString(res)
-                    : getString(R.string.greeting_with_name, getString(res), greetingName));
+            String text = greetingText.isEmpty() ? getString(res) : greetingText;
+            greeting.setText(greetingName.isEmpty() ? text
+                    : getString(R.string.greeting_with_name, text, greetingName));
             greeting.setTextColor(greetingColor);
         }
         if (shamsi) shamsiDate.setText(Shamsi.today(getResources()));

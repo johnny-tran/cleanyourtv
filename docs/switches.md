@@ -43,6 +43,7 @@ rule sit on its wanted list until a screenshot arrives.
 | `top_bar_apps` | <img src="switches/top_bar_apps.jpg" width="320" alt="top_bar_apps on a TV"> |
 | `hide_date` | <img src="switches/hide_date.jpg" width="320" alt="hide_date on a TV"> |
 | `show_greeting` | <img src="switches/show_greeting.jpg" width="320" alt="show_greeting on a TV"> |
+| `greeting_text` | <img src="switches/greeting_text.jpg" width="320" alt="greeting_text on a TV: GOOD TO SEE YOU above the clock instead of the time-of-day greeting"> |
 | `header_white` | <img src="switches/header_white.jpg" width="320" alt="header_white on a TV"> |
 | `clock_wallpaper` | <img src="switches/clock_wallpaper.jpg" width="320" alt="clock_wallpaper on a TV"> |
 | `clock_wallpaper_dim` | <img src="switches/clock_wallpaper.jpg" width="320" alt="clock_wallpaper_dim on a TV"> |

@@ -132,6 +132,7 @@ A new key needs one there in the same pull request.
 | `date_below_clock` | bool | The date (with the Shamsi and lunar lines) on its own line under the clock instead of beside it, for a top bar whose pills leave the date too little room (`false` by default) |
 | `locale` | string | The language the launcher shows itself in, as a language tag (`"vi"`, `"pt-BR"`, `"ar-EG-u-nu-latn"` for Arabic with Western digits), instead of the TV's: for firmware with no menu entry for a language the launcher speaks (a China-market Xiaomi offers Chinese and English only). Empty by default, which follows the TV |
 | `greeting_name` | string | A name after the greeting, e.g. `"Mr. Trịnh"` for GOOD MORNING, MR. TRỊNH; empty for the greeting alone |
+| `greeting_text` | string | Replaces the time-of-day greeting above the clock with this text, e.g. `"Welcome back"` instead of GOOD EVENING; `greeting_name` is still appended after it |
 | `hide_date` | bool | Hide the Home date column and its divider (`false` by default); keeps the clock and greeting |
 | `show_greeting` | bool | The greeting above the clock (`true` by default); `false` hides it |
 | `header_white` | bool | The date and the line between the clock and the date in the clock's full white instead of dimmed (`false` by default) |
