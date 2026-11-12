@@ -56,6 +56,8 @@ final class WatchNextRow {
     private int lastFocused;
     private String signature = "";
     private boolean loaded;
+    private Runnable onChanged;
+    private int refreshGeneration;
 
     WatchNextRow(Host host, View container, View block, HorizontalScrollView scroll, LinearLayout row, Config cfg) {
         this.host = host;
@@ -90,9 +92,14 @@ final class WatchNextRow {
      * so it picks up anything watched while Home was away.
      */
     void refresh(Runnable onChanged) {
+        this.onChanged = onChanged;
+        int generation = ++refreshGeneration;
         new Thread(() -> {
-            WatchNext.Result result = WatchNext.query(host.activity().getContentResolver());
-            host.activity().runOnUiThread(() -> render(result, onChanged));
+            WatchNext.Result result = WatchNext.query(host.activity().getContentResolver(),
+                    WatchNextDismissals.load(host.activity()));
+            host.activity().runOnUiThread(() -> {
+                if (generation == refreshGeneration && !host.activity().isDestroyed()) render(result, onChanged);
+            });
         }, "watch-next").start();
     }
 
@@ -100,6 +107,7 @@ final class WatchNextRow {
         List<WatchNext.Item> next = result.error == null ? result.items : Collections.emptyList();
         StringBuilder sig = new StringBuilder(result.error == null ? "" : result.error);
         for (WatchNext.Item it : next) {
+            sig.append(WatchNextDismissals.key(it)).append(':').append(it.lastEngagement).append(':');
             sig.append(it.title).append(':').append(it.subtitle).append(':').append(it.art)
                     .append(':').append(it.progress).append('|');
         }
@@ -123,6 +131,7 @@ final class WatchNextRow {
     private View card(WatchNext.Item item, int index) {
         View v = LayoutInflater.from(container.getContext()).inflate(R.layout.item_watch, row, false);
         View card = v.findViewById(R.id.watch_card);
+        card.setTag(item);
         ImageView poster = v.findViewById(R.id.poster);
         TextView fallback = v.findViewById(R.id.fallback_title);
         TextView name = v.findViewById(R.id.name);
@@ -176,6 +185,18 @@ final class WatchNextRow {
         });
         card.setOnClickListener(view -> launch(item));
         return v;
+    }
+
+    WatchNext.Item itemForCard(View card) {
+        Object tag = card.getTag();
+        return tag instanceof WatchNext.Item && items.contains(tag) ? (WatchNext.Item) tag : null;
+    }
+
+    boolean remove(View card) {
+        WatchNext.Item item = itemForCard(card);
+        if (item == null || !WatchNextDismissals.remove(host.activity(), item)) return false;
+        refresh(onChanged);
+        return true;
     }
 
     View focusedCard() {

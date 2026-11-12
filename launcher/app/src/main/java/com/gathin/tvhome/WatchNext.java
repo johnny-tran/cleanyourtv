@@ -6,6 +6,7 @@ import android.media.tv.TvContract;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Reads the system Continue watching / Watch Next list that other apps publish. A launcher holding
@@ -18,6 +19,9 @@ import java.util.List;
 final class WatchNext {
 
     static final class Item {
+        long rowId;
+        String contentId;
+        long lastEngagement;
         String title;
         String subtitle;
         String art;
@@ -39,13 +43,13 @@ final class WatchNext {
     private static final String[] PROJECTION = {
             "_id", "title", "episode_title", "season_display_number", "episode_display_number",
             "poster_art_uri", "thumbnail_uri", "last_playback_position_millis", "duration_millis",
-            "intent_uri", "package_name", "last_engagement_time_utc_millis",
+            "intent_uri", "package_name", "last_engagement_time_utc_millis", "internal_provider_id",
     };
 
     private WatchNext() {
     }
 
-    static Result query(ContentResolver resolver) {
+    static Result query(ContentResolver resolver, Map<String, ?> removed) {
         Result result = new Result();
         try (Cursor c = resolver.query(TvContract.WatchNextPrograms.CONTENT_URI, PROJECTION,
                 null, null, "last_engagement_time_utc_millis DESC")) {
@@ -55,6 +59,12 @@ final class WatchNext {
             }
             while (c.moveToNext() && result.items.size() < MAX_ITEMS) {
                 Item it = new Item();
+                it.rowId = num(c, "_id");
+                it.contentId = str(c, "internal_provider_id");
+                it.lastEngagement = num(c, "last_engagement_time_utc_millis");
+                it.pkg = str(c, "package_name");
+                // Filter before the display limit, so removed cards are replaced by the next available titles.
+                if (WatchNextDismissals.isHidden(it, removed)) continue;
                 it.title = str(c, "title");
                 if (it.title == null) continue;
                 it.subtitle = subtitle(c);
@@ -63,7 +73,6 @@ final class WatchNext {
                 long dur = num(c, "duration_millis");
                 it.progress = dur > 0 && pos > 0 ? Math.min(1f, (float) pos / dur) : 0f;
                 it.intentUri = str(c, "intent_uri");
-                it.pkg = str(c, "package_name");
                 if (it.intentUri == null && it.pkg == null) continue;   // nothing to launch
                 result.items.add(it);
             }

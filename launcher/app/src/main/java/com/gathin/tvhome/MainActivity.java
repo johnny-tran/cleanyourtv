@@ -603,6 +603,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (lunar) lunarDate.setVisibility(View.VISIBLE);
         greetingName = cfg.greetingName;
         if (cfg.dateBelowClock) moveDateBelowClock();
+        if (cfg.hideDate) {
+            ((View) findViewById(R.id.date).getParent()).setVisibility(View.GONE);
+            findViewById(R.id.clockDivider).setVisibility(View.GONE);
+        }
         if (cfg.dateBelowClock && cfg.iconOnlyButtons && !cfg.topMenu
                 && !getResources().getBoolean(R.bool.rtl_menu_bar)) {
             alignDateBelowIconsWithClock();
@@ -1477,6 +1481,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (holdOk(event)) return true;
         if (tileMenuEnabled && !reordering && openPopup == null && cardPrompt == null
                 && event.getKeyCode() == KeyEvent.KEYCODE_MENU) {
+            View watchCard = watchNextRow == null ? null : watchNextRow.focusedCard();
+            if (watchCard != null) {
+                if (RemoteKeys.menuReleased(event.getAction(), event.getFlags())) showWatchCardMenu(watchCard);
+                return true;
+            }
             int position = focusedTilePosition();
             if (position >= 0 && position < adapter.appCount()
                     && !getPackageName().equals(adapter.packageAt(position))) {
@@ -3819,7 +3828,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         View anchor = findViewById(R.id.btnSettings);
         View panel = getLayoutInflater().inflate(R.layout.popup_inputs, root, false);
         LinearLayout rows = panel.findViewById(R.id.rows);
-        PopupWindow popup = glassPopup(panel, (int) (200 * density));
+        boolean restoreWatchNext = watchNextEnabled && !WatchNextDismissals.load(this).isEmpty();
+        int minimumWidth = restoreWatchNext ? 300 : 200;
+        PopupWindow popup = glassPopup(panel, (int) (minimumWidth * density));
         if (!launcherSettingsButton) addSettingsMenuRow(rows, popup, R.string.launcher_settings, () -> startActivityForResult(
                 new Intent(this, LauncherSettingsActivity.class), LAUNCHER_SETTINGS_REQUEST));
         // Firmware that ships its own settings app next to the AOSP one (Xiaomi China is one): the
@@ -3834,10 +3845,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (moduleCards) addSettingsMenuRow(rows, popup, R.string.module_cards, this::showModuleCards);
         if (dockRow) addSettingsMenuRow(rows, popup, R.string.dock_edit, this::startDockEdit);
         addSettingsMenuRow(rows, popup, R.string.reorder, this::toggleReorder);
+        if (restoreWatchNext) {
+            addSettingsMenuRow(rows, popup, R.string.watch_next_restore, () -> {
+                if (WatchNextDismissals.restore(this)) refreshWatchNext();
+                else Toast.makeText(this, R.string.watch_next_save_failed, Toast.LENGTH_LONG).show();
+            });
+        }
         // A launcher may not restart the TV itself; the Home key helper can open the system power menu instead.
         if (HomeKeyService.canOpenPowerMenu()) addSettingsMenuRow(rows, popup, R.string.power_menu, HomeKeyService::openPowerMenu);
         panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-        popup.setWidth(Math.max((int) (200 * density), panel.getMeasuredWidth()));
+        popup.setWidth(Math.max((int) (minimumWidth * density), panel.getMeasuredWidth()));
         // Hebrew puts Settings at the left of the header: grow the menu inward from it.
         dropIn(popup, panel, anchor, getResources().getBoolean(R.bool.rtl_menu_bar)
                 ? Gravity.START : Gravity.END);
@@ -3866,6 +3883,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private long holdOkDown = -1;
     private int holdOkPosition = -1;
     private String holdOkKey;    // the app under OK when it went down; a tile rebuild can move another app to that slot
+    private View holdOkWatchCard;
     private boolean holdOkFired;
     private final Runnable holdOkTimer = this::fireHoldOk;
 
@@ -3882,7 +3900,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 holdOkFired = false;
                 handler.removeCallbacks(holdOkTimer);
                 holdOkPosition = reordering || openPopup != null || cardPrompt != null ? -1 : focusedTilePosition();
-                holdOkKey = holdOkPosition < 0 || holdOkPosition >= adapter.appCount() ? null : adapter.keyAt(holdOkPosition);
+                holdOkWatchCard = reordering || openPopup != null || cardPrompt != null || watchNextRow == null
+                        ? null : watchNextRow.focusedCard();
+                WatchNext.Item watchItem = holdOkWatchCard == null ? null : watchNextRow.itemForCard(holdOkWatchCard);
+                holdOkKey = watchItem != null ? WatchNextDismissals.key(watchItem)
+                        : holdOkPosition < 0 || holdOkPosition >= adapter.appCount() ? null : adapter.keyAt(holdOkPosition);
                 if (holdOkKey == null) {
                     holdOkDown = -1;
                     return false;
@@ -3902,6 +3924,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         handler.removeCallbacks(holdOkTimer);
         holdOkDown = -1;
         holdOkKey = null;
+        holdOkWatchCard = null;
         if (holdOkFired) {
             holdOkFired = false;
             View f = getCurrentFocus();
@@ -3922,6 +3945,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         holdOkDown = -1;
         holdOkPosition = -1;
         holdOkKey = null;
+        holdOkWatchCard = null;
     }
 
     private void fireHoldOk() {
@@ -3929,6 +3953,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (holdOkDown < 0 || holdOkFired) return;
         holdOkFired = true;
         if (openPopup != null || reordering) return;   // View's own long click got there first
+        if (holdOkWatchCard != null) {
+            WatchNext.Item item = watchNextRow.itemForCard(holdOkWatchCard);
+            if (getCurrentFocus() != holdOkWatchCard || item == null || !holdOkKey.equals(WatchNextDismissals.key(item))) return;
+            holdOkWatchCard.setPressed(false);
+            showWatchCardMenu(holdOkWatchCard);
+            return;
+        }
         int position = holdOkPosition;
         if (position < 0 || position >= adapter.appCount() || position != focusedTilePosition()) return;
         // Same slot is not enough: tiles may have been rebuilt during the hold, so the app must match too.
@@ -3968,8 +3999,28 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // Some firmware has no App info page at all; a row that only toasts "can't open" helps nobody.
         Intent info = SystemSettings.appInfo(this, pkg);
         if (info != null) addSettingsMenuRow(rows, popup, R.string.library_app_info, () -> open(info));
+        showTileMenu(panel, rows, popup, card, 200);
+    }
+
+    /** Continue watching uses the same popup, rows, placement and held-OK release guard as app tiles. */
+    private void showWatchCardMenu(View card) {
+        if (reordering || openPopup != null || watchNextRow == null) return;
+        WatchNext.Item item = watchNextRow.itemForCard(card);
+        if (item == null) return;
+        View panel = getLayoutInflater().inflate(R.layout.popup_inputs, root, false);
+        LinearLayout rows = panel.findViewById(R.id.rows);
+        PopupWindow popup = glassPopup(panel, (int) (300 * density));
+        addSettingsMenuRow(rows, popup, R.string.watch_next_remove, () -> {
+            if (!watchNextRow.remove(card)) Toast.makeText(this, R.string.watch_next_save_failed, Toast.LENGTH_LONG).show();
+        });
+        Intent info = item.pkg == null ? null : SystemSettings.appInfo(this, item.pkg);
+        if (info != null) addSettingsMenuRow(rows, popup, R.string.library_app_info, () -> open(info));
+        showTileMenu(panel, rows, popup, card, 300);
+    }
+
+    private void showTileMenu(View panel, LinearLayout rows, PopupWindow popup, View card, int minimumWidthDp) {
         panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-        popup.setWidth(Math.max((int) (200 * density), panel.getMeasuredWidth()));
+        popup.setWidth(Math.max((int) (minimumWidthDp * density), panel.getMeasuredWidth()));
         // Dock tiles sit near the bottom of the screen: open the menu above the tile when it would not fit below.
         int[] at = new int[2];
         card.getLocationInWindow(at);

@@ -38,6 +38,7 @@ else comes from upstream untouched, so all of upstream's new features arrive wit
 New files (cannot conflict):
 - `launcher/app/src/main/java/com/gathin/tvhome/WatchNext.java` — the Watch Next provider query.
 - `launcher/app/src/main/java/com/gathin/tvhome/PosterLoader.java` — poster download and cache.
+- `launcher/app/src/main/java/com/gathin/tvhome/WatchNextDismissals.java` — local removals, restored by newer published viewing activity or manually.
 - `launcher/app/src/main/java/com/gathin/tvhome/WatchNextRow.java` — the row: its view, render and focus.
 - `launcher/app/src/main/java/com/gathin/tvhome/WatchNextScrollView.java` — focus scrolling that preserves the row's margins.
 - `launcher/app/src/main/java/com/gathin/tvhome/TileFocus.java` — shared app/poster focus motion and colour rules.
@@ -80,3 +81,12 @@ A clean, pre-fork CleanYourTV 3.4 APK and the pre-switch Home and disabled-packa
 fork owner's machine under `work/backup-cleanyourtv/` (`work/` is git-ignored and is not in a clone).
 Restore with `cmd package set-home-activity --user 0 com.gathin.tvhome/.MainActivity` after reinstalling
 that APK.
+
+## Removing Continue watching cards
+
+Hold OK on a Continue watching card to open the same glass menu as app tiles, then choose **Remove from
+Continue Watching**. This stores only its package/content identity and last engagement timestamp in the
+launcher's private preferences; it does not delete the streaming app's shared entry or viewing history.
+The card returns when the app publishes a newer engagement timestamp. Apps that do not share updated
+Watch Next data cannot trigger this automatically. Hold the top-right gear and choose **Restore Continue
+Watching** to clear local removals for all titles still available in the shared feed.

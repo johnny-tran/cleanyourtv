@@ -160,5 +160,8 @@
     <string name="clock_format_24">24-hour</string>
     <!-- continue watching (fork): -->
     <string name="continue_watching">Continue watching</string>
+    <string name="watch_next_remove">Remove from Continue Watching</string>
+    <string name="watch_next_restore">Restore Continue Watching</string>
+    <string name="watch_next_save_failed">Could not save Continue Watching changes.</string>
     <!-- end continue watching (fork) -->
 </resources>
