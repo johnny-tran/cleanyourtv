@@ -152,4 +152,7 @@
     <string name="clock_format_system">מערכת</string>
     <string name="clock_format_12">12 שעות</string>
     <string name="clock_format_24">24 שעות</string>
+    <string name="watch_next_remove">הסרה מהמשך צפייה</string>
+    <string name="watch_next_restore">שחזור המשך צפייה</string>
+    <string name="watch_next_save_failed">לא ניתן לשמור שינויים בהמשך צפייה.</string>
 </resources>

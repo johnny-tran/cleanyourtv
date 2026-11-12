@@ -45,6 +45,7 @@ Click **Settings** for the TV's own settings. Hold OK on it for its menu:
 - **Edit dock**, with `dock_row`.
 - **Reorder apps**: OK picks an app up, the arrows move it, Back places it, and Back again finishes.
   With `tile_menu` (on by default since 3.3), holding OK on a tile offers **Move**, which picks that app up straight away.
+- **Restore Continue Watching**, when local removals exist: show removed titles that are still in the shared feed.
 - **Restart…** while `HomeKeyService` runs, which opens the system power menu (a launcher may not
   restart the TV itself).
 
