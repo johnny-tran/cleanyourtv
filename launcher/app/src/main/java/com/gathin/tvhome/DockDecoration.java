@@ -34,6 +34,7 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
     private final boolean singleRow;
     /** dock_band_all: in a single row, the band runs behind every app instead of the dock apps only. */
     private final boolean bandAll;
+    private final float focusScale;
 
     /**
      * @param translucent the cinematic shelf's band: the artwork and the glow show through it.
@@ -46,8 +47,9 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
      * @param bandAll     with singleRow, the band runs behind every app in the row (dock_band_all).
      */
     DockDecoration(int dockSize, float density, boolean translucent, boolean names, int opacity, boolean lightGlass,
-                   boolean evenPadding, boolean bandVisible, boolean singleRow, boolean bandAll) {
+                   boolean evenPadding, boolean bandVisible, boolean singleRow, boolean bandAll, float focusScale) {
         this.dockSize = dockSize;
+        this.focusScale = focusScale;
         this.singleRow = singleRow;
         this.bandAll = singleRow && bandAll;
         this.density = density;
@@ -64,6 +66,10 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
     /** Concentric corners: the band's radius is the tiles' radius plus the band's padding around them. */
     static float radiusPx(float tileRadiusPx, float paddingPx) {
         return tileRadiusPx + paddingPx;
+    }
+
+    static float focusedPaddingPx(int tileSize, float scale, float clearance) {
+        return tileSize * (scale - 1f) / 2f + clearance;
     }
 
     /**
@@ -120,13 +126,15 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
         float side = Math.max(0f, Math.min(sidePad, Math.min(rect.left, parent.getWidth() - rect.right) - density));
         float radius = AppAdapter.cornerRadius(cardWidth, density);
         if (evenPadding) {
-            // The same padding on all four sides, so the band's corners are concentric with the tiles' everywhere.
-            int inner = parent.getWidth() - parent.getPaddingLeft() - parent.getPaddingRight();
+            // Stable bounds reserve the same clearance around an enlarged tile on every side.
             // A single row's tiles can run off the screen, so only its top limits the padding; its ends are clamped below.
             float room = (singleRow ? rect.top : Math.min(rect.top, Math.min(rect.left, parent.getWidth() - rect.right))) - density;
-            float even = evenPaddingPx(inner, dockSize, cardWidth, room);
-            rect.inset(-even, -even);
-            radius = radiusPx(radius, even);
+            float zoomX = cardWidth * (focusScale - 1f) / 2f;
+            float clearance = Math.max(0f, Math.min(8 * density, room - zoomX));
+            float xPad = focusedPaddingPx(cardWidth, focusScale, clearance);
+            float yPad = focusedPaddingPx(AppAdapter.tileHeightPx(cardWidth), focusScale, clearance);
+            rect.inset(-xPad, -yPad);
+            radius = radiusPx(radius * focusScale, clearance);
         } else {
             // dock_even_padding off: the band as before, with its fixed 26 dp corners.
             rect.inset(singleRow ? -sidePad : -side, -pad);
@@ -140,7 +148,7 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
         }
         rect.bottom += namesRoom;
         if (lightGlass && (rect.top != shaderTop || rect.bottom != shaderBottom)) {
-            // The pills' glass (pill_bg: white, 18% fading to 8%), a little fainter over this much larger area.
+            // The pills' glass, a little fainter over this much larger area.
             band.setShader(new LinearGradient(0, rect.top, 0, rect.bottom, 0x24FFFFFF, 0x0DFFFFFF,
                     Shader.TileMode.CLAMP));
             shaderTop = rect.top;

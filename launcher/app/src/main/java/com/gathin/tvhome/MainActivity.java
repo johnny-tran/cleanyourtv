@@ -702,7 +702,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
         });
         if (dockRow) grid.addItemDecoration(new DockDecoration(COLUMNS, density, cinematic, cfg.alwaysShowNames, cfg.dockOpacity, cfg.dockGlass, cfg.dockEvenPadding, cfg.dockBand,
-                singleRow, cfg.dockBandAll));
+                singleRow, cfg.dockBandAll, TileFocus.scale(cfg.animations, cfg.advancedEffects)));
         if (cfg.fadeRows) TopFade.attach(grid, 48 * density);
         // Reduced motion: the tiles are simply there, with no entrance (reloadApps skips it there too).
         if (animations && !reducedMotion) {
@@ -752,6 +752,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             // even when the theme requests an extra visible row below the dock.
             int shelfClearance = cfg.appLibrary ? hero.getMeasuredHeight() + (int) (40 * density) : 0;
             int want = Math.max(shelfClearance, h - dockRow - gridRows - (int) (AppAdapter.BOTTOM_ROOM_DP * density));
+            // Compact dock has no label space: anchor the next card to a 16dp bottom peek.
+            if (MainActivity.this.dockRow && cfg.dockEvenPadding && !singleRow
+                    && !cfg.alwaysShowNames && rowsBelowDock == 0) {
+                int compactDockHeight = AppAdapter.tileHeightPx(tileW) + Math.round(16 * density);
+                want = Math.max(shelfClearance, h - compactDockHeight
+                        - Math.round((AppAdapter.DOCK_EXTRA_DP + 8 + 16) * density));
+            }
             // Where the rows cannot fit even at the smallest tile (3 rows with the title on), the title keeps its
             // room above the dock and the last rows run off the bottom instead of the title drawing over the clock.
             if (MainActivity.this.dockRow && cfg.dockTitle && rowsBelowDock > 0) want = Math.max(want, (int) (AppAdapter.TITLE_ROOM_DP * density));
@@ -1872,7 +1879,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         showTileGlass(card, adapter.focusScale(), advancedEffects && !inDock,
                 coloured ? adapter.ambientColorAt(position) : 0);
         Rect r = tileRect;
-        float pad = 6f * density;
+        float pad = glass.drawingInset();
         View item = (View) card.getParent();
         if (dockRow && (singleRow || position < COLUMNS)) {
             // Dock: park it at the bottom of the screen and show the top shelf for this app. In a single row
@@ -1913,7 +1920,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         Rect r = tileRect;
         r.set(0, 0, card.getWidth(), card.getHeight());
         tileRectInRoot(card, r);
-        float pad = 6f * density;        // matches GlassView's glow inset
+        float pad = glass.drawingInset();
         float w = card.getWidth() * scale + 2 * pad;
         float h = card.getHeight() * scale + 2 * pad;
         float x = r.exactCenterX() - w / 2f;
@@ -1984,7 +1991,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         RecyclerView.ViewHolder vh = grid.findViewHolderForAdapterPosition(pos);
         View card = vh == null ? null : vh.itemView.findViewById(R.id.card);
         if (card == null || card.getWidth() <= 0 || !card.isFocused()) return;
-        float pad = 6f * density;
+        float pad = glass.drawingInset();
         float scale = adapter.focusScale();
         int w = (int) (card.getWidth() * scale + 2 * pad);
         int h = (int) (card.getHeight() * scale + 2 * pad);
@@ -3737,12 +3744,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     }
 
     private PopupWindow glassPopup(View panel, int width) {
+        PopupMaterial.apply(getWindow(), root, panel);
         final PopupWindow popup = new PopupWindow(panel, width, ViewGroup.LayoutParams.WRAP_CONTENT, true);
         popup.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));   // needed for Back to dismiss
         popup.setOutsideTouchable(true);
         popup.setAnimationStyle(0);
         popup.setElevation(0f);
         popup.setOnDismissListener(() -> {
+            panel.setBackgroundResource(R.drawable.glass_panel); // release the menu's captured backdrop
             if (openPopup == popup) openPopup = null;
         });
         openPopup = popup;
@@ -3755,7 +3764,17 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         panel.setPivotY(0f);
         panel.setScaleY(0.92f);
         panel.setTranslationY(-8 * density);
-        popup.showAsDropDown(anchor, 0, (int) (10 * density), gravity);
+        int margin = (int) (24 * density);
+        int[] viewport = new int[2], at = new int[2];
+        root.getLocationInWindow(viewport);
+        anchor.getLocationInWindow(at);
+        popup.setWidth(Math.min(popup.getWidth(), Math.max(1, root.getWidth() - 2 * margin)));
+        boolean alignRight = (Gravity.getAbsoluteGravity(gravity, anchor.getLayoutDirection())
+                & Gravity.HORIZONTAL_GRAVITY_MASK) == Gravity.RIGHT;
+        int offset = PopupPlacement.offset(at[0], anchor.getWidth(), popup.getWidth(),
+                viewport[0], viewport[0] + root.getWidth(), margin, alignRight);
+        int below = PopupPlacement.belowOffset(anchor.getHeight(), anchor.getScaleY(), (int) (10 * density));
+        popup.showAsDropDown(anchor, offset, below, gravity);
         panel.animate().alpha(1f).scaleY(1f).translationY(0f).setDuration(reducedMotion ? Motion.REDUCED_MS : 220)
                 .setInterpolator(new android.view.animation.DecelerateInterpolator(1.6f)).start();
     }
@@ -4029,7 +4048,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         int[] at = new int[2];
         card.getLocationInWindow(at);
         int gap = (int) (10 * density), height = panel.getMeasuredHeight();
-        if (at[1] + card.getHeight() + gap + height <= root.getHeight()) {
+        if (at[1] + Math.round(card.getHeight() * card.getScaleY()) + gap + height <= root.getHeight()) {
             dropIn(popup, panel, card, Gravity.START);
         } else {
             panel.setAlpha(0f);

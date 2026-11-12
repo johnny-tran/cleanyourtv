@@ -182,6 +182,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private final int dockSize;
     /** config dock_row: false makes the dock apps the first tiles of one plain grid (names shown, no empty slots). */
     private final boolean dockRow;
+    private final boolean compactDock;
     /** config single_row: tiles sit in one sideways row, each as wide as a grid column would be. */
     private final boolean singleRow;
     /** config always_show_names: the alpha of an unfocused tile's name (0 hides it). */
@@ -237,6 +238,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         this.rowsBelowDock = cfg.rowsBelowDock;
         this.dockTitle = cfg.dockTitle;
         this.dockRow = cfg.dockRow;
+        this.compactDock = cfg.dockEvenPadding && !cfg.singleRow;
         this.singleRow = cfg.singleRow;
         this.restNameAlpha = cfg.alwaysShowNames ? 0.75f : 0f;
         this.cinematic = cfg.cinematicHome;
@@ -459,11 +461,12 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         if (isLibraryAt(position)) return;
         Holder h = (Holder) holder;
         Entry e = items.get(position);
+        boolean dockKind = DockSlots.inDockRow(dockRow, singleRow, position, dockSize);
         if (e.kind == Entry.EMPTY) {
             // A free dock slot keeps its place in the row and the band, but shows nothing and takes no focus.
             h.card.setVisibility(View.INVISIBLE);
             h.card.setFocusable(false);
-            h.name.setVisibility(View.INVISIBLE);
+            h.name.setVisibility(dockKind && compactDock && restNameAlpha == 0f ? View.GONE : View.INVISIBLE);
             h.banner.setImageDrawable(null);
             h.icon.setImageDrawable(null);
             h.card.setOnClickListener(null);
@@ -475,8 +478,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         h.name.setText(e.name);
         // The dock has no labels, unless always_show_names asks for them (DockDecoration then makes room in the band).
         // In a single row every tile is the dock's kind: the big title above names it.
-        boolean dockKind = DockSlots.inDockRow(dockRow, singleRow, position, dockSize);
-        h.name.setVisibility(dockKind && restNameAlpha == 0f ? View.INVISIBLE : View.VISIBLE);
+        h.name.setVisibility(dockKind && restNameAlpha == 0f ? (compactDock ? View.GONE : View.INVISIBLE) : View.VISIBLE);
         h.inDock = dockKind;
         boolean focused = h.card.isFocused();   // a rebind after reload() can hit the focused tile
         h.name.setAlpha(focused ? 1f : restNameAlpha);

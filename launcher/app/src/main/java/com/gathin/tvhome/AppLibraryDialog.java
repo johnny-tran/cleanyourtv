@@ -116,11 +116,12 @@ final class AppLibraryDialog {
         Rect rect = new Rect(0, 0, card.getWidth(), card.getHeight());
         shelf.offsetDescendantRectToMyCoords(card, rect);
         ViewGroup.LayoutParams lp = highlight.getLayoutParams();
-        lp.width = rect.width() + dp(12);
-        lp.height = rect.height() + dp(12);
+        float pad = highlight.drawingInset();
+        lp.width = rect.width() + Math.round(2 * pad);
+        lp.height = rect.height() + Math.round(2 * pad);
         highlight.setLayoutParams(lp);
-        highlight.setTranslationY(rect.top - dp(6));
-        float x = rect.left - dp(6) + scrollOffset;
+        highlight.setTranslationY(rect.top - pad);
+        float x = rect.left - pad + scrollOffset;
         if (!highlightShown || !animate || !animations) {
             spring.cancel();
             highlight.setTranslationX(x - scrollOffset);

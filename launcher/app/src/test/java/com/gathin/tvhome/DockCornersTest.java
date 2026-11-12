@@ -7,6 +7,13 @@ import org.junit.Test;
 
 /** The dock band's corners are concentric with its tiles' corners. */
 public class DockCornersTest {
+    @org.junit.Test public void focusedBoundsHaveEqualVisibleClearance() {
+        float x = DockDecoration.focusedPaddingPx(200, 1.1f, 16);
+        float y = DockDecoration.focusedPaddingPx(112, 1.1f, 16);
+        assertEquals(16f, x - 200 * 0.1f / 2, 0.001f);
+        assertEquals(16f, y - 112 * 0.1f / 2, 0.001f);
+        assertEquals(16f, DockDecoration.focusedPaddingPx(200, 1f, 16), 0.001f);
+    }
     private static final float DENSITY = 2f;   // 1080p TV, 320 dpi
     /** activity_main.xml: 56dp root padding and 10dp grid padding on each side of a 1920 px screen. */
     private static final int INNER = 1920 - 2 * 56 * 2 - 2 * 10 * 2;

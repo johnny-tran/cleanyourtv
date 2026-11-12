@@ -79,6 +79,11 @@ public class GlassView extends View {
         invalidate();
     }
 
+    /** Room for the stock glow plus a 1.5dp clear gap before the outline's inner edge. */
+    float drawingInset() { return 6f * density + outlineOffset(); }
+
+    private float outlineOffset() { return 1.5f * density + rim.getStrokeWidth() / 2f; }
+
     /** Retarget from the currently drawn bounds, keeping the rim's stroke width constant during a resize. */
     void resize(int width, int height, float corner, boolean animate) {
         boolean changed = size.retarget(width, height, corner);
@@ -130,7 +135,7 @@ public class GlassView extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
-        float inset = 6f * density;   // room for the glow
+        float inset = drawingInset();
         float width = size.targetWidth > 0 ? size.width : getWidth();
         float height = size.targetHeight > 0 ? size.height : getHeight();
         rect.set(inset, inset, width - inset, height - inset);
@@ -140,18 +145,18 @@ public class GlassView extends View {
         // caches the result, so the rings cost one draw, not one per frame of the spring.
         if (!flat || halo) {
             int rings = 12;
-            float step = inset / rings;
+            float step = 6f * density / rings;
             int alpha = flat ? glowAlpha / 2 : glowAlpha;
             glow.setStrokeWidth(step + 0.5f);
             for (int i = 0; i < rings; i++) {
-                float o = step * (i + 0.5f);
+                float o = outlineOffset() + step * (i + 0.5f);
                 float t = 1f - (float) i / rings;
                 glow.setColor(Math.round(alpha * t) << 24 | glowRgb);
                 canvas.drawRoundRect(rect.left - o, rect.top - o, rect.right + o, rect.bottom + o, radius + o, radius + o, glow);
             }
         }
         if (flat) {
-            canvas.drawRoundRect(rect, radius, radius, rim);
+            drawRim(canvas);
             return;
         }
 
@@ -164,7 +169,14 @@ public class GlassView extends View {
         canvas.drawRoundRect(rect, radius, radius, specular);
         canvas.restore();
 
-        canvas.drawRoundRect(rect, radius, radius, rim);
+        drawRim(canvas);
+    }
+
+    /** An offset outline leaves the tile edge untouched, with background visible in the gap. */
+    private void drawRim(Canvas canvas) {
+        float offset = outlineOffset();
+        canvas.drawRoundRect(rect.left - offset, rect.top - offset, rect.right + offset, rect.bottom + offset,
+                radius + offset, radius + offset, rim);
     }
 
     @Override
