@@ -144,6 +144,15 @@ Private Sony captures check stable outside-panel pixels before/after the first a
 header click leaving the library open, outside-click dismissal, and Back dismissal. The opening's
 asynchronous catalogue load still precedes the first popup frame; physical-remote acceptance is pending.
 
+The App Library catalogue viewport extends through the panel's horizontal padding and clips at its
+rounded outer edge. The same inset is transferred to the list's padding, preserving resting card
+positions, focus scroll targets and the header's spacing while allowing partial cards to reach both edges.
+Child drawing retains the old vertical padding clip and uses the panel's shared corner radius for
+its outer outline. Release build/lint and 351 JVM tests pass (604,485-byte APK). Private Sony captures
+check the unchanged first-card position and partial cards at both outer edges after scrolling.
+The initial install hit Android's low-storage limit; `pm trim-caches 512M` freed temporary cache space
+and the update installed. Physical remote acceptance and RTL appearance remain unchecked.
+
 `tools/manage.py` validates the enum, with parity checks in `tests/test_manage_set_enums.py`. `tests/test_shipped_config_values.py` checks shipped values;
 `PopupStyleTest.java` covers normalization and fallback. `themes/README.md` documents the key and
 `docs/switches.md` reuses the existing TV screenshot of the original App Library panel for Classic.

@@ -8,6 +8,8 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Color;
+import android.graphics.Canvas;
+import android.graphics.Outline;
 import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
@@ -19,6 +21,7 @@ import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewOutlineProvider;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -162,11 +165,27 @@ final class AppLibraryDialog {
         this.dismissed = dismissed;
         this.excludedApps = excludedApps;
         density = activity.getResources().getDisplayMetrics().density;
-        panel = new LinearLayout(activity);
+        panel = new LinearLayout(activity) {
+            @Override protected void dispatchDraw(Canvas canvas) {
+                int save = canvas.save();
+                // Extend horizontal overflow only; preserve the existing top/bottom clipping.
+                canvas.clipRect(0, getPaddingTop(), getWidth(), getHeight() - getPaddingBottom());
+                super.dispatchDraw(canvas);
+                canvas.restoreToCount(save);
+            }
+        };
         panel.setLayoutDirection(rtl ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
         panel.setOrientation(LinearLayout.VERTICAL);
         panel.setPadding(dp(12), dp(8), dp(12), dp(12));
         panel.setBackgroundResource(R.drawable.glass_panel);
+        panel.setClipToPadding(false);
+        panel.setOutlineProvider(new ViewOutlineProvider() {
+            @Override public void getOutline(View view, Outline outline) {
+                outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(),
+                        activity.getResources().getDimension(R.dimen.popup_corner_radius));
+            }
+        });
+        panel.setClipToOutline(true);
         View decor = activity.getWindow().getDecorView();
         catalogWidth = Math.min(dp(800), Math.max(dp(200), decor.getWidth() - dp(64)));
         int width = catalogWidth;
@@ -405,7 +424,7 @@ final class AppLibraryDialog {
         list.setItemAnimator(null);
         list.setOverScrollMode(View.OVER_SCROLL_NEVER);
         list.setClipToPadding(false);
-        list.setPadding(dp(10), dp(8), dp(10), dp(8));
+        list.setPadding(panel.getPaddingLeft() + dp(10), dp(8), panel.getPaddingRight() + dp(10), dp(8));
         list.setAdapter(new Catalog());
         shelf.addView(list, new FrameLayout.LayoutParams(-1, -1));
         highlight = new GlassView(activity, null);
@@ -427,7 +446,11 @@ final class AppLibraryDialog {
                 highlight.setTranslationX(highlight.getTranslationX() - dx);
             }
         });
-        panel.addView(shelf, new LinearLayout.LayoutParams(-1, 0, 1));
+        // Let scrolled cards reach the panel edge, while keeping the resting cards at their original inset.
+        LinearLayout.LayoutParams shelfParams = new LinearLayout.LayoutParams(-1, 0, 1);
+        shelfParams.leftMargin = -panel.getPaddingLeft();
+        shelfParams.rightMargin = -panel.getPaddingRight();
+        panel.addView(shelf, shelfParams);
         int position = Math.min(selectedPosition, apps.size() - 1);
         for (int i = 0; i < apps.size(); i++) {
             if (apps.get(i).activityInfo.packageName.equals(selectedPackage)) { position = i; break; }
