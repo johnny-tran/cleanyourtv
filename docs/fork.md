@@ -139,6 +139,10 @@ App Library's full-screen popup wrapper draws its 55% black backdrop immediately
 the centered panel's fade-in. It replaces Android's separately animated dim-behind window flag, so
 opening does not start with a lighter Home backdrop. Outside clicks dismiss the wrapper; clicks in
 the panel do not. The glass snapshot still captures only Home, preserving the panel material.
+The fixed-backdrop build passes 351 JVM tests, release lint and assembly (604,305-byte APK).
+Private Sony captures check stable outside-panel pixels before/after the first arrow, an inside
+header click leaving the library open, outside-click dismissal, and Back dismissal. The opening's
+asynchronous catalogue load still precedes the first popup frame; physical-remote acceptance is pending.
 
 `tools/manage.py` validates the enum, with parity checks in `tests/test_manage_set_enums.py`. `tests/test_shipped_config_values.py` checks shipped values;
 `PopupStyleTest.java` covers normalization and fallback. `themes/README.md` documents the key and
