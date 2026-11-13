@@ -59,6 +59,8 @@ KEYS_TABLE = ROOT / "themes" / "README.md"
 ENUMS = {
     "glow_style": ("Config.java", "GLOW_", "trimmed"),
     "glass_style": ("Config.java", "GLASS_", "trimmed"),
+    "dock_style": ("Config.java", "DOCK_STYLE_", "trimmed"),
+    "popup_style": ("Config.java", "POPUP_", "trimmed"),
     "wallpaper_order": ("WallpaperRotation.java", "ORDER_", "exact"),
 }
 CONSTANT = r"\b{prefix}([A-Z_]+)\s*=\s*\"([a-z-]+)\""
@@ -214,7 +216,8 @@ class ShippedConfigValuesTest(unittest.TestCase):
     def test_the_enum_values_are_read_out_of_the_launcher(self):
         # A constant parse that found nothing would let every value through, the way it did for "off".
         self.assertEqual(self.enums.get("glow_style"), ({"radial", "horizon"}, "trimmed"))
-        self.assertEqual(self.enums.get("glass_style"), ({"glass", "rim", "halo"}, "trimmed"))
+        self.assertEqual(self.enums.get("glass_style"), ({"glass", "rim", "halo", "lift", "zoom"}, "trimmed"))
+        self.assertEqual(self.enums.get("popup_style"), ({"classic", "glass"}, "trimmed"))
         self.assertEqual(self.enums.get("wallpaper_order"), ({"sequential", "shuffle"}, "exact"))
 
     def test_a_value_outside_the_set_is_reported(self):
@@ -222,7 +225,7 @@ class ShippedConfigValuesTest(unittest.TestCase):
         # glowStyle() answered radial. The spelling is the reader's - glow and glass trim and ignore
         # case, validOrder() does not, so `Sequential` is not `sequential`.
         for key, value, listed in (("glow_style", "off", "horizon, radial"),
-                                   ("glass_style", "frosted", "glass, halo, rim"),
+                                   ("glass_style", "frosted", "glass, halo, lift, rim, zoom"),
                                    ("wallpaper_order", "Sequential", "sequential, shuffle")):
             with self.subTest(key=key, value=value):
                 reported = dict(problems({key: value}, self.kinds, self.enums))

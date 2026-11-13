@@ -18,6 +18,8 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
     private final float density;
     private final Paint band = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint edge = new Paint(Paint.ANTI_ALIAS_FLAG);
+    /** Figma's inner stroke on the dark band: #fff at 10%, 2px (1dp), drawn inside the band's edge. */
+    private final Paint inner = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF rect = new RectF();
 
     /** Extra band below the tiles for their names (always_show_names), in px. */
@@ -35,6 +37,8 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
     /** dock_band_all: in a single row, the band runs behind every app instead of the dock apps only. */
     private final boolean bandAll;
     private final float focusScale;
+    private final boolean dark;
+    private final DockBackdrop backdrop = new DockBackdrop();
 
     /**
      * @param translucent the cinematic shelf's band: the artwork and the glow show through it.
@@ -47,8 +51,9 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
      * @param bandAll     with singleRow, the band runs behind every app in the row (dock_band_all).
      */
     DockDecoration(int dockSize, float density, boolean translucent, boolean names, int opacity, boolean lightGlass,
-                   boolean evenPadding, boolean bandVisible, boolean singleRow, boolean bandAll, float focusScale) {
+                   boolean evenPadding, boolean bandVisible, boolean singleRow, boolean bandAll, float focusScale, boolean dark) {
         this.dockSize = dockSize;
+        this.dark = dark;
         this.focusScale = focusScale;
         this.singleRow = singleRow;
         this.bandAll = singleRow && bandAll;
@@ -61,6 +66,9 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
         edge.setStyle(Paint.Style.STROKE);
         edge.setStrokeWidth(density);
         edge.setColor(lightGlass ? 0x38FFFFFF : translucent ? 0x26FFFFFF : 0x1FFFFFFF);
+        inner.setStyle(Paint.Style.STROKE);
+        inner.setStrokeWidth(density);
+        inner.setColor(0x1AFFFFFF);
     }
 
     /** Concentric corners: the band's radius is the tiles' radius plus the band's padding around them. */
@@ -87,7 +95,7 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
         int pos = parent.getChildAdapterPosition(view);
         if (pos >= 0 && (singleRow || pos < dockSize)) {
             outRect.top = (int) (6 * density);
-            outRect.bottom = (int) (12 * density);
+            outRect.bottom = (int) ((dark ? 24 : 12) * density);
         }
     }
 
@@ -105,8 +113,14 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
             if (card == null) continue;
             float l = child.getLeft() + card.getLeft();
             float t = child.getTop() + card.getTop() + child.getTranslationY();
-            float r = l + card.getWidth();
+            if (dark) l = DockLayout.scaledStart(l + card.getTranslationX(), card.getPivotX(), card.getScaleX());
+            float r = l + card.getWidth() * (dark ? card.getScaleX() : 1f);
             float b = t + card.getHeight();
+            if (dark) {
+                // Match the shrinking visible top/bottom gap throughout the same tile animation.
+                float endPad = DockLayout.endPadding(card.getHeight(), card.getScaleY(), density);
+                l -= endPad; r += endPad;
+            }
             cardWidth = card.getWidth();
             if (!any) {
                 rect.set(l, t, r, b);
@@ -116,6 +130,16 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
             }
         }
         if (!any) return;
+        if (dark) {
+            // Horizontal bounds already include each end card's animated clearance.
+            rect.top -= 20 * density; rect.bottom += 20 * density;
+            backdrop.draw(c, parent, rect, 30 * density);
+            // Figma's inside stroke: inset by half its width so it sits within the band, concentric with its corners.
+            float half = inner.getStrokeWidth() / 2f;
+            c.drawRoundRect(rect.left + half, rect.top + half, rect.right - half, rect.bottom - half,
+                    30 * density - half, 30 * density - half, inner);
+            return;
+        }
         float pad = 14 * density;
         // The band can only draw inside the grid, and the first and last dock tiles sit 12dp in from its
         // edges: a full 14dp at the sides sliced the rounded ends flat (#454). Keep the sides, with the

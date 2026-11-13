@@ -3,6 +3,9 @@ package com.gathin.tvhome;
 import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Canvas;
+import android.graphics.Bitmap;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffXfermode;
 import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.RectF;
@@ -34,6 +37,12 @@ public class GlassView extends View {
     /** glass_style rim or halo: no sheen and no fill, only the crisp rim (and, for halo, a lighter outer glow). */
     private boolean flat;
     private boolean halo;
+    private boolean lift;
+    private boolean zoomOnly;
+    private Bitmap shadow;
+    private int shadowWidth, shadowHeight;
+    private float shadowCorner;
+    private final Paint shadowPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
 
     public GlassView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -68,6 +77,8 @@ public class GlassView extends View {
 
     /** One of Config's GLASS_* styles. */
     void setStyle(String style) {
+        lift = Config.GLASS_LIFT.equals(style);
+        zoomOnly = Config.GLASS_ZOOM.equals(style);
         flat = Config.GLASS_RIM.equals(style) || Config.GLASS_HALO.equals(style);
         halo = Config.GLASS_HALO.equals(style);
         rim.setStrokeWidth((flat ? 2f : 1.5f) * density);
@@ -80,7 +91,7 @@ public class GlassView extends View {
     }
 
     /** Room for the stock glow plus a 1.5dp clear gap before the outline's inner edge. */
-    float drawingInset() { return 6f * density + outlineOffset(); }
+    float drawingInset() { return lift ? 60 * density : 6f * density + outlineOffset(); }
 
     private float outlineOffset() { return 1.5f * density + rim.getStrokeWidth() / 2f; }
 
@@ -135,10 +146,16 @@ public class GlassView extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
+        if (zoomOnly) return;
         float inset = drawingInset();
         float width = size.targetWidth > 0 ? size.width : getWidth();
         float height = size.targetHeight > 0 ? size.height : getHeight();
         rect.set(inset, inset, width - inset, height - inset);
+
+        if (lift) {
+            drawLift(canvas, width, height);
+            return;
+        }
 
         // Outer glow: thin rings across the inset, each a little fainter, so it fades out smoothly. Three wide
         // strokes left visible bands once the glow took an app's colour at a stronger alpha. The hardware layer
@@ -170,6 +187,28 @@ public class GlassView extends View {
         canvas.restore();
 
         drawRim(canvas);
+    }
+
+    /** Cache the Figma drop shadow at target size, then stretch it during the existing size morph. */
+    private void drawLift(Canvas canvas, float width, float height) {
+        int w = Math.max(1, size.targetWidth), h = Math.max(1, size.targetHeight);
+        float corner = size.targetRadius;
+        if (shadow == null || shadowWidth != w || shadowHeight != h || shadowCorner != corner) {
+            shadowWidth = w; shadowHeight = h; shadowCorner = corner;
+            // Half-resolution mask keeps a poster shadow small; the blurred edge is upscaled with filtering.
+            Bitmap next = Bitmap.createBitmap(Math.max(1, w / 2), Math.max(1, h / 2), Bitmap.Config.ARGB_8888);
+            Canvas mask = new Canvas(next); mask.scale(0.5f, 0.5f);
+            float inset = drawingInset();
+            RectF card = new RectF(inset, inset, w - inset, h - inset);
+            Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+            p.setColor(0xFF000000);
+            p.setShadowLayer(20 * density, 0, 15 * density, 0x59000000);
+            mask.drawRoundRect(card, corner, corner, p);
+            p.clearShadowLayer(); p.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.CLEAR));
+            mask.drawRoundRect(card, corner, corner, p);
+            shadow = next;
+        }
+        canvas.drawBitmap(shadow, null, new RectF(0, 0, width, height), shadowPaint);
     }
 
     /** An offset outline leaves the tile edge untouched, with background visible in the gap. */

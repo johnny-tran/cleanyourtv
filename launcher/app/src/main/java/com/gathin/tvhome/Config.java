@@ -261,9 +261,13 @@ final class Config {
     final String glowStyle;
     /** The focus highlight's look (config.xml, glass_style): {@link #GLASS_DEFAULT}, {@link #GLASS_RIM} or {@link #GLASS_HALO}. */
     final String glassStyle;
+    final String popupStyle;
+    final String dockStyle;
+    static final String DOCK_STYLE_CLASSIC = "classic", DOCK_STYLE_DARK = "dark";
+    static final String POPUP_CLASSIC = "classic", POPUP_GLASS = "glass";
 
     static final String GLOW_RADIAL = "radial", GLOW_HORIZON = "horizon";
-    static final String GLASS_DEFAULT = "glass", GLASS_RIM = "rim", GLASS_HALO = "halo";
+    static final String GLASS_DEFAULT = "glass", GLASS_RIM = "rim", GLASS_HALO = "halo", GLASS_LIFT = "lift", GLASS_ZOOM = "zoom";
     /** Show each rotating wallpaper's name from wallpapers/captions.txt (config.xml / theme wallpaper_captions). */
     final boolean wallpaperCaptions;
     /** Answer VIEW_INPUTS with the Inputs menu (handle_view_inputs); see InputsRequestActivity. */
@@ -304,7 +308,7 @@ final class Config {
                    boolean handleViewInputs, boolean tileMenu, boolean dockEvenPadding, boolean dockBand, boolean cinematicDots, boolean cinematicWhiteFocus, boolean wifiStatusColor, int cinematicScrim, int cinematicArt,
                    Map<String, Set<String>> wallpaperMoods, boolean gamepadPassthrough, boolean consumeVolumeKeys, boolean volumePausesFilter, boolean homeIgnoreChannelKeys, boolean powerOnHome, boolean homeLongPressHome, boolean wifiStatusWarnings, List<String> topBarApps, boolean showGreeting, boolean headerWhite, boolean clockWallpaper, int clockWallpaperDim, boolean clockGlow, String glassStyle, boolean singleRow, boolean dockBandAll, boolean lunarDate, int lunarUtcOffset, boolean dateBelowClock, boolean hideDate, boolean vpnPill, String locale, boolean powerOnHomeAlways, boolean inputsConnectedOnly, boolean inputsCecStateOnly,
                    int openOnStartNetworkWait, boolean openOnStartOnWake, boolean iconOnlyVpn, String clockFormat, boolean backOpensClock, boolean glowSnap,
-                   boolean settingsKeyClearTask, boolean watchNext) {
+                   boolean settingsKeyClearTask, boolean watchNext, String popupStyle, String dockStyle) {
         this.handleViewInputs = handleViewInputs;
         this.tileMenu = tileMenu;
         this.inputKeycodes = inputKeycodes;
@@ -427,6 +431,8 @@ final class Config {
         this.glowStyle = glowStyle(glowStyle);
         this.wallpaperCaptions = wallpaperCaptions;
         this.glassStyle = glassStyle(glassStyle);
+        this.popupStyle = popupStyle(popupStyle);
+        this.dockStyle = dockStyle(dockStyle);
     }
 
     /** A known glow_style, or radial (the default) for anything else. */
@@ -434,10 +440,21 @@ final class Config {
         return value != null && GLOW_HORIZON.equalsIgnoreCase(value.trim()) ? GLOW_HORIZON : GLOW_RADIAL;
     }
 
+    /** Match theme enum handling: trim, ignore case, and fall back to the existing glass material. */
+    static String dockStyle(String value) {
+        return value != null && DOCK_STYLE_DARK.equalsIgnoreCase(value.trim()) ? DOCK_STYLE_DARK : DOCK_STYLE_CLASSIC;
+    }
+
+    static String popupStyle(String value) {
+        return value != null && POPUP_CLASSIC.equalsIgnoreCase(value.trim()) ? POPUP_CLASSIC : POPUP_GLASS;
+    }
+
     /** A known glass_style, or glass (the default) for anything else. */
     static String glassStyle(String value) {
         if (value == null) return GLASS_DEFAULT;
         String v = value.trim();
+        if (GLASS_ZOOM.equalsIgnoreCase(v)) return GLASS_ZOOM;
+        if (GLASS_LIFT.equalsIgnoreCase(v)) return GLASS_LIFT;
         if (GLASS_RIM.equalsIgnoreCase(v)) return GLASS_RIM;
         return GLASS_HALO.equalsIgnoreCase(v) ? GLASS_HALO : GLASS_DEFAULT;
     }
@@ -559,6 +576,8 @@ final class Config {
         int clockWallpaperDim = res.getInteger(R.integer.clock_wallpaper_dim);
         boolean clockGlow = res.getBoolean(R.bool.clock_glow);
         String glassStyle = res.getString(R.string.glass_style);
+        String popupStyle = res.getString(R.string.popup_style);
+        String dockStyle = res.getString(R.string.dock_style);
         boolean singleRow = res.getBoolean(R.bool.single_row);
         boolean dockBandAll = res.getBoolean(R.bool.dock_band_all);
         boolean applied = false;
@@ -682,6 +701,8 @@ final class Config {
             dockBandAll = bool(json, "dock_band_all", dockBandAll);
             glowStyle = string(json, "glow_style", glowStyle);
             glassStyle = string(json, "glass_style", glassStyle);
+            popupStyle = string(json, "popup_style", popupStyle);
+            dockStyle = string(json, "dock_style", dockStyle);
         }
         // A top-bar app is moved there, not copied: it leaves the grid.
         for (String pkg : topBarApps) if (!hidden.contains(pkg)) hidden.add(pkg);
@@ -747,7 +768,7 @@ final class Config {
                 dateBelowClock, hideDate, vpnPill, locale, powerOnHomeAlways, inputsConnectedOnly, inputsCecStateOnly,
                 Math.max(0, Math.min(600, openOnStartNetworkWait)), openOnStartOnWake, iconOnlyVpn, clockFormat, backOpensClock, glowSnap,
                 settingsKeyClearTask,
-                watchNext);
+                watchNext, popupStyle, dockStyle);
     }
 
     /**

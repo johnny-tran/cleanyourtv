@@ -473,7 +473,9 @@ def banner_problem(values, root=ROOT):
 # switch it left where it was, the dead `"glow_style": "off"` #3429 removed from two themes.
 ENUMS = {
     "glow_style": (("radial", "horizon"), "radial", True),
-    "glass_style": (("glass", "rim", "halo"), "glass", True),
+    "glass_style": (("glass", "rim", "halo", "lift", "zoom"), "glass", True),
+    "dock_style": (("classic", "dark"), "classic", True),
+    "popup_style": (("classic", "glass"), "glass", True),
     "clock_format": (("12", "24", "system"), "system", True),
     "wallpaper_order": (("shuffle", "sequential"), "shuffle", False),
 }

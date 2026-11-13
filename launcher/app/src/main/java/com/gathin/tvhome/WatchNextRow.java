@@ -6,6 +6,7 @@ import android.graphics.Outline;
 import android.graphics.drawable.Drawable;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
+import android.view.SoundEffectConstants;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
@@ -27,6 +28,10 @@ import java.util.List;
  * {@link Host}. It never touches the launcher's grid, so a failure here cannot take Home down.
  */
 final class WatchNextRow {
+
+    static int posterWidth(int viewportWidth) {
+        return Math.max(1, Math.round(viewportWidth * (340f / 1920f)));
+    }
 
     /** Finish fading as the rising dock reaches the row's center; scrolling back restores it. */
     static float scrollAlpha(int scrolled, int rowHeight) {
@@ -70,6 +75,12 @@ final class WatchNextRow {
         });
         this.row = row;
         this.density = container.getResources().getDisplayMetrics().density;
+        if (Config.DOCK_STYLE_DARK.equals(cfg.dockStyle)) {
+            scroll.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
+                if (r - l == or - ol) return;
+                for (int i = 0; i < row.getChildCount(); i++) sizePoster(row.getChildAt(i));
+            });
+        }
     }
 
     /** True when there is a card to focus. */
@@ -135,6 +146,7 @@ final class WatchNextRow {
         ImageView poster = v.findViewById(R.id.poster);
         TextView fallback = v.findViewById(R.id.fallback_title);
         TextView name = v.findViewById(R.id.name);
+        sizePoster(v);
         roundCorners(card);
         card.setContentDescription(item.title);
         fallback.setText(item.title);
@@ -164,7 +176,7 @@ final class WatchNextRow {
 
         card.setOnFocusChangeListener((view, focused) -> {
             TileFocus.animate(view, poster, name, focused, cfg.animations, cfg.advancedEffects,
-                    cfg.reducedMotion, cfg.alwaysShowNames ? 0.75f : 0f, cfg.focusOvershoot, false);
+                    cfg.reducedMotion, cfg.alwaysShowNames ? 0.75f : 0f, cfg.focusOvershoot, false, cfg.glassStyle);
             if (!focused) return;
             lastFocused = index;
             host.onCardFocused(view);
@@ -173,18 +185,47 @@ final class WatchNextRow {
             if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
             if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
                 host.onLeaveUp(view);
+                if (!view.isFocused()) view.playSoundEffect(SoundEffectConstants.NAVIGATION_UP);
                 return true;
             }
             if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
                 host.onLeaveDown();
+                if (!view.isFocused()) view.playSoundEffect(SoundEffectConstants.NAVIGATION_DOWN);
                 return true;
             }
-            if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) return index == 0;
-            if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) return index == row.getChildCount() - 1;
+            if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                boolean left = keyCode == KeyEvent.KEYCODE_DPAD_LEFT;
+                int target = index + (left ? -1 : 1);
+                // Handle the move here: HorizontalScrollView changes focus without the grid's system tick.
+                if (target >= 0 && target < row.getChildCount()
+                        && row.getChildAt(target).findViewById(R.id.watch_card).requestFocus()) {
+                    view.playSoundEffect(left ? SoundEffectConstants.NAVIGATION_LEFT
+                            : SoundEffectConstants.NAVIGATION_RIGHT);
+                }
+                return true;
+            }
             return false;
         });
         card.setOnClickListener(view -> launch(item));
         return v;
+    }
+
+    private void sizePoster(View item) {
+        if (!Config.DOCK_STYLE_DARK.equals(cfg.dockStyle)) return;
+        int viewport = scroll.getWidth() > 0 ? scroll.getWidth()
+                : container.getResources().getDisplayMetrics().widthPixels;
+        int width = posterWidth(viewport);
+        int height = Math.round(width * 9f / 16f);
+        View card = item.findViewById(R.id.watch_card);
+        ViewGroup.LayoutParams cardParams = card.getLayoutParams();
+        cardParams.width = width;
+        cardParams.height = height;
+        card.setLayoutParams(cardParams);
+        View name = item.findViewById(R.id.name);
+        ViewGroup.MarginLayoutParams nameParams = (ViewGroup.MarginLayoutParams) name.getLayoutParams();
+        nameParams.width = width;
+        nameParams.topMargin = height + Math.round(6 * density);
+        name.setLayoutParams(nameParams);
     }
 
     WatchNext.Item itemForCard(View card) {

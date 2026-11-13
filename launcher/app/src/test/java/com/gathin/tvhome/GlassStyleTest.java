@@ -19,6 +19,15 @@ public class GlassStyleTest {
         assertEquals(Config.GLASS_HALO, Config.glassStyle("HALO "));
     }
 
+    @Test public void zoomByName() {
+        assertEquals(Config.GLASS_ZOOM, Config.glassStyle(" ZOOM "));
+        assertEquals(1.224f, TileFocus.scale(true, false, Config.GLASS_ZOOM), 0.001f);
+    }
+
+    @Test public void liftByName() {
+        assertEquals(Config.GLASS_LIFT, Config.glassStyle(" LIFT "));
+    }
+
     @Test
     public void anythingElseIsGlass() {
         assertEquals(Config.GLASS_DEFAULT, Config.glassStyle("glass"));

@@ -14,6 +14,10 @@ final class TileFocus {
         return !animations ? 1f : advancedEffects ? 1.12f : AppAdapter.FOCUS_SCALE;
     }
 
+    static float scale(boolean animations, boolean advancedEffects, String style) {
+        return animations && (Config.GLASS_LIFT.equals(style) || Config.GLASS_ZOOM.equals(style)) ? 306f / 250f : scale(animations, advancedEffects);
+    }
+
     static boolean coloured(boolean appGlow, boolean cinematic, boolean whiteDock, boolean inDock, boolean festive) {
         return (appGlow || cinematic && !whiteDock && inDock) && !festive;
     }
@@ -21,12 +25,21 @@ final class TileFocus {
     static void animate(View view, ImageView banner, TextView name, boolean focused, boolean animations,
                         boolean advancedEffects, boolean reducedMotion, float restNameAlpha,
                         boolean overshoot, boolean inDock) {
+        animate(view, banner, name, focused, animations, advancedEffects, reducedMotion, restNameAlpha,
+                overshoot, inDock, Config.GLASS_DEFAULT);
+    }
+
+    static void animate(View view, ImageView banner, TextView name, boolean focused, boolean animations,
+                        boolean advancedEffects, boolean reducedMotion, float restNameAlpha,
+                        boolean overshoot, boolean inDock, String style) {
         float density = view.getResources().getDisplayMetrics().density;
         view.animate().cancel();
         banner.animate().cancel();
         name.animate().cancel();
-        float scale = scale(animations, advancedEffects);
+        float scale = scale(animations, advancedEffects, style);
         float s = focused ? scale : 1f;
+        if (Config.GLASS_LIFT.equals(style))
+            TileShadow.animate(view, focused, animations, reducedMotion, scale);
         if (!animations) {
             view.setScaleX(1f);
             view.setScaleY(1f);

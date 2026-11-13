@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- A menu row is a full pill (its 42dp height / 2), and the panel's corners are concentric with it:
+         21dp row radius + the panel's 6dp inset. -->
+    <dimen name="popup_row_radius">21dp</dimen>
+    <dimen name="popup_corner_radius">27dp</dimen>
+</resources>

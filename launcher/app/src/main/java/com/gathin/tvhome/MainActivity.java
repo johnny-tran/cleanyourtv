@@ -363,6 +363,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private int dockEditSlot = -1;
     /** Tile menu's "Add to dock": the app waiting for a dock place in edit-dock mode, or null. */
     private String dockEditAppKey;
+    private String popupStyle;
     private AppLibraryDialog appLibrary;
     private boolean appLibrarySelection;
     private boolean libraryOkOpens;
@@ -524,7 +525,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         sky = findViewById(R.id.sky);
         sky.setIntensity(cfg.skyIntensity);
         glass = findViewById(R.id.glass);
-        glass.setStyle(cfg.glassStyle);
+        // Lift shadows are card-local; the shared moving highlight stays invisible for this style.
+        glass.setStyle(Config.GLASS_LIFT.equals(cfg.glassStyle) ? Config.GLASS_ZOOM : cfg.glassStyle);
+        popupStyle = cfg.popupStyle;
         if (festive) glass.setAccent(festival.accentColor());
         ambient = findViewById(R.id.ambient);
         // The glow is one bitmap, so its alpha can be applied while drawing it. Otherwise every frame of
@@ -702,7 +705,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
         });
         if (dockRow) grid.addItemDecoration(new DockDecoration(COLUMNS, density, cinematic, cfg.alwaysShowNames, cfg.dockOpacity, cfg.dockGlass, cfg.dockEvenPadding, cfg.dockBand,
-                singleRow, cfg.dockBandAll, TileFocus.scale(cfg.animations, cfg.advancedEffects)));
+                singleRow, cfg.dockBandAll, TileFocus.scale(cfg.animations, cfg.advancedEffects, cfg.glassStyle), Config.DOCK_STYLE_DARK.equals(cfg.dockStyle)));
         if (cfg.fadeRows) TopFade.attach(grid, 48 * density);
         // Reduced motion: the tiles are simply there, with no entrance (reloadApps skips it there too).
         if (animations && !reducedMotion) {
@@ -740,11 +743,33 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // tvOS layout: push the dock row towards the bottom of the screen, leaving room for
         // rows_below_dock grid rows under it; the rest of the grid stays below until you press Down.
         int rowsBelowDock = cfg.rowsBelowDock;
+        boolean darkDock = Config.DOCK_STYLE_DARK.equals(cfg.dockStyle);
+        if (darkDock) {
+            // Extend only the grid to the Figma margins; leave the header's layout unchanged.
+            ViewGroup.MarginLayoutParams wrapper = (ViewGroup.MarginLayoutParams) ((View) grid.getParent()).getLayoutParams();
+            wrapper.setMarginStart(Math.round(-56 * density));
+            wrapper.setMarginEnd(Math.round(-56 * density));
+            ((View) grid.getParent()).setLayoutParams(wrapper);
+            grid.setPadding(Math.round(33 * density), grid.getPaddingTop(), Math.round(33 * density), grid.getPaddingBottom());
+        }
         grid.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
             int h = b - t;
             // Item height follows the tile size, which follows the columns and the rows that must fit (AppAdapter.tileWidthPx).
             int inner = (r - l) - grid.getPaddingLeft() - grid.getPaddingRight();
-            int tileW = AppAdapter.tileWidthPx(inner, h, COLUMNS, rowsBelowDock, cfg.dockTitle, cfg.dockRow, density);
+            int tileW = darkDock ? DockLayout.tileWidth(inner, COLUMNS, density)
+                    : AppAdapter.tileWidthPx(inner, h, COLUMNS, rowsBelowDock, cfg.dockTitle, cfg.dockRow, density);
+            if (darkDock) {
+                int inset = (root.getWidth() - inner) / 2 + (inner / COLUMNS - tileW) / 2;
+                View watchRow = findViewById(R.id.watchRow);
+                if (watchRow.getPaddingStart() != inset)
+                    watchRow.setPaddingRelative(inset, watchRow.getPaddingTop(), watchRow.getPaddingEnd(), watchRow.getPaddingBottom());
+                View title = findViewById(R.id.watchTitle);
+                ViewGroup.MarginLayoutParams titleParams = (ViewGroup.MarginLayoutParams) title.getLayoutParams();
+                if (titleParams.getMarginStart() != inset) {
+                    titleParams.setMarginStart(inset);
+                    title.setLayoutParams(titleParams);
+                }
+            }
             int itemH = AppAdapter.itemHeightPx(AppAdapter.tileHeightPx(tileW), density);
             int dockRow = itemH + (int) (AppAdapter.DOCK_EXTRA_DP * density);   // item height plus DockDecoration offsets
             int gridRows = itemH * rowsBelowDock;
@@ -759,6 +784,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 want = Math.max(shelfClearance, h - compactDockHeight
                         - Math.round((AppAdapter.DOCK_EXTRA_DP + 8 + 16) * density));
             }
+            if (darkDock && !singleRow && rowsBelowDock == 0)
+                want = Math.max(shelfClearance, DockLayout.parkedTop(h, DockLayout.tileHeight(tileW), density));
             // Where the rows cannot fit even at the smallest tile (3 rows with the title on), the title keeps its
             // room above the dock and the last rows run off the bottom instead of the title drawing over the clock.
             if (MainActivity.this.dockRow && cfg.dockTitle && rowsBelowDock > 0) want = Math.max(want, (int) (AppAdapter.TITLE_ROOM_DP * density));
@@ -941,10 +968,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 // it is showing, so the row is reachable without going through the dock.
                 if (watchNextRow != null && watchNextRow.visible()) {
                     watchNextRow.focus();
+                    if (!v.isFocused()) v.playSoundEffect(SoundEffectConstants.NAVIGATION_DOWN);
                     return true;
                 }
                 // Back to the dock tile Up came from, not wherever the focus finder lands.
                 focusTile(singleRow ? lastFocused : lastFocused % COLUMNS);
+                if (!v.isFocused()) v.playSoundEffect(SoundEffectConstants.NAVIGATION_DOWN);
                 return true;
             }
             if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
@@ -1857,7 +1886,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             grid.post(() -> {
                 if (libraryFocusPending && appLibrary == null && hasWindowFocus() && !isFinishing()) focusLibrary();
             });
-        }, libraryExcludedApps);
+        }, libraryExcludedApps, popupStyle);
         openPopup = appLibrary.popup;
         appLibrary.show();
     }
@@ -1875,6 +1904,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             return;
         }
         boolean inDock = DockSlots.inDockRow(dockRow, singleRow, position, COLUMNS);
+        wallpaperPlayer.setGridFocused(dockRow && !singleRow && position >= COLUMNS);
         boolean coloured = TileFocus.coloured(appGlow, cinematic, cinematicWhiteFocus, singleRow || position < COLUMNS, festive);
         showTileGlass(card, adapter.focusScale(), advancedEffects && !inDock,
                 coloured ? adapter.ambientColorAt(position) : 0);
@@ -1927,7 +1957,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // advanced_effects lifts a focused grid tile by 4dp and the glass follows it; dock tiles stay put (#2135).
         float y = r.exactCenterY() - h / 2f - (lifted ? 4f * density : 0f);
 
-        glass.resize((int) w, (int) h, AppAdapter.cornerRadius(card.getWidth(), density) * scale,
+        glass.resize((int) w, (int) h, (Math.abs(card.getHeight() / (float) card.getWidth() - 0.6f) < 0.01f
+                ? DockLayout.corner(card.getWidth()) : AppAdapter.cornerRadius(card.getWidth(), density)) * scale,
                 glassShown && animations && !reducedMotion);
         glassCardW = card.getWidth();
         glassCardRect.set(r);
@@ -2584,6 +2615,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 // showing, else leaves for the top bar as before.
                 if (watchNextRow != null && watchNextRow.visible()) {
                     watchNextRow.focus();
+                    if (watchNextRow.focusedCard() != null) grid.playSoundEffect(SoundEffectConstants.NAVIGATION_UP);
                     return true;
                 }
                 return false;
@@ -3744,7 +3776,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     }
 
     private PopupWindow glassPopup(View panel, int width) {
-        PopupMaterial.apply(getWindow(), root, panel);
+        PopupMaterial.apply(getWindow(), root, panel, popupStyle);
         final PopupWindow popup = new PopupWindow(panel, width, ViewGroup.LayoutParams.WRAP_CONTENT, true);
         popup.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));   // needed for Back to dismiss
         popup.setOutsideTouchable(true);
@@ -4007,14 +4039,16 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             addSettingsMenuRow(rows, popup, inDock ? R.string.tile_replace_in_dock : R.string.tile_add_to_dock,
                     () -> startDockEditFor(key, inDock));
         }
-        if (position < adapter.movableCount()) addSettingsMenuRow(rows, popup, R.string.tile_move, () -> {
-            if (!beginReorder()) return;
-            int at = adapter.positionOf(key);   // beginReorder can rebuild the tiles
-            if (at < 0) return;
-            focusTile(at);
-            pickUp(at);
-            Toast.makeText(this, R.string.reorder_hint, Toast.LENGTH_LONG).show();
-        });
+        if (position < adapter.movableCount()) {
+            addSettingsMenuRow(rows, popup, R.string.tile_move, () -> {
+                if (!beginReorder()) return;
+                int at = adapter.positionOf(key);   // beginReorder can rebuild the tiles
+                if (at < 0) return;
+                focusTile(at);
+                pickUp(at);
+                Toast.makeText(this, R.string.reorder_hint, Toast.LENGTH_LONG).show();
+            });
+        }
         if (appLibraryEnabled) addSettingsMenuRow(rows, popup, R.string.library_remove_shortcut, () -> {
             if (LibraryApps.save(this, pkg, false)) reloadApps(false);
             else Toast.makeText(this, R.string.library_save_failed, Toast.LENGTH_LONG).show();

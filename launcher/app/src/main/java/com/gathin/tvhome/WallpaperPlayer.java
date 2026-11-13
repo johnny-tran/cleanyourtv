@@ -33,6 +33,18 @@ import java.util.concurrent.Executors;
 final class WallpaperPlayer {
     private final FrameLayout root;
     private final ImageView image;
+    private final ImageView gridBackdrop;
+    private final boolean animations, reducedMotion;
+    private boolean gridFocused;
+
+    private static final class Picture {
+        final Bitmap sharp, blurred;
+        Picture(Bitmap sharp, Bitmap blurred) { this.sharp = sharp; this.blurred = blurred; }
+        void recycle() {
+            sharp.recycle();
+            if (blurred != null) blurred.recycle();
+        }
+    }
     private final int backgroundColor;
     private final List<File> files;
     private final long interval;
@@ -64,6 +76,16 @@ final class WallpaperPlayer {
 
     WallpaperPlayer(Context context, FrameLayout root, Config config) {
         this.root = root;
+        animations = config.animations;
+        reducedMotion = config.reducedMotion;
+        gridBackdrop = Config.DOCK_STYLE_DARK.equals(config.dockStyle) ? new ImageView(context) : null;
+        if (gridBackdrop != null) {
+            gridBackdrop.setId(R.id.wallpaper_grid_blur);
+            gridBackdrop.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            gridBackdrop.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+            gridBackdrop.setVisibility(View.GONE);
+            gridBackdrop.setAlpha(0f);
+        }
         backgroundColor = config.backgroundColor;
         files = new ArrayList<>(config.wallpapers);
         interval = config.wallpaperRotationMinutes * 60_000L;
@@ -94,6 +116,8 @@ final class WallpaperPlayer {
         if (config.wallpaperEnabled && !files.isEmpty()) {
             root.addView(image, 0, new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            if (gridBackdrop != null) root.addView(gridBackdrop, 1, new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
             showFirst();
         }
     }
@@ -109,7 +133,7 @@ final class WallpaperPlayer {
         File first = WallpaperRotation.find(playable, previous);
         if (first == null) first = WallpaperRotation.pick(playable, previous, order, random);
         while (first != null) {
-            Bitmap bitmap = decode(first);
+            Picture bitmap = decode(first);
             if (bitmap != null) {
                 show(bitmap);
                 // The picture covers the whole screen: the root's plain colour under it is overdraw.
@@ -141,6 +165,10 @@ final class WallpaperPlayer {
     void releaseForMemoryPressure() {
         if (current == null) return;
         image.setImageDrawable(null);
+        if (gridBackdrop != null) {
+            gridBackdrop.animate().cancel();
+            gridBackdrop.setImageDrawable(null);
+        }
         // The renderer may still have a queued frame that references this hardware bitmap. Drop our references and
         // let Android reclaim its native buffer after rendering releases it instead of recycling it mid-frame.
         current = null;
@@ -179,7 +207,7 @@ final class WallpaperPlayer {
         File next = selected;
         loading = true;
         decoder.execute(() -> {
-            Bitmap bitmap = decode(next);
+            Picture bitmap = decode(next);
             root.post(() -> {
                 loading = false;
                 if (closed || !active) {
@@ -259,17 +287,59 @@ final class WallpaperPlayer {
         return key.toString();
     }
 
-    /** Puts a picture on screen and releases the previous one after a frame has drawn the new one. */
-    private void show(Bitmap bitmap) {
-        Bitmap old = current;
-        current = bitmap;
+    /** Replaces both cached pictures, restoring the current focus state after a reload. */
+    private void show(Picture bitmap) {
+        current = bitmap.sharp;
         // The wallpaper covers the whole root; avoid drawing the fallback colour under it.
         root.setBackground(null);
-        image.setImageBitmap(bitmap);
-        if (old != null && old != bitmap) image.postDelayed(old::recycle, 500);
+        image.setImageBitmap(bitmap.sharp);
+        if (gridBackdrop != null) {
+            gridBackdrop.animate().cancel();
+            gridBackdrop.setImageBitmap(bitmap.blurred);
+            gridBackdrop.setAlpha(gridFocused ? 1f : 0f);
+            gridBackdrop.setVisibility(gridFocused ? View.VISIBLE : View.GONE);
+            image.setVisibility(gridFocused && bitmap.blurred != null ? View.INVISIBLE : View.VISIBLE);
+        }
+        // Drop old textures through GC: a rapid focus reversal can still have a queued draw using them.
     }
 
-    private Bitmap decode(File file) {
+    void setGridFocused(boolean focused) {
+        if (gridBackdrop == null || gridFocused == focused) return;
+        gridFocused = focused;
+        gridBackdrop.animate().cancel();
+        image.setVisibility(View.VISIBLE);
+        gridBackdrop.setVisibility(View.VISIBLE);
+        gridBackdrop.animate().alpha(focused ? 1f : 0f)
+                .setDuration(!animations ? 0 : reducedMotion ? Motion.REDUCED_MS : 300)
+                .withEndAction(() -> {
+                    if (!gridFocused) gridBackdrop.setVisibility(View.GONE);
+                    else if (gridBackdrop.getDrawable() != null) image.setVisibility(View.INVISIBLE);
+                }).start();
+    }
+
+    /** A reduced-resolution gaussian approximation of Figma's ~68px blur, tinted once per wallpaper. */
+    private static Bitmap blurWallpaper(Bitmap source) {
+        int w = Math.max(1, source.getWidth() / 12), h = Math.max(1, source.getHeight() / 12);
+        Bitmap small = Bitmap.createScaledBitmap(source, w, h, true);
+        Bitmap out = small.copy(Bitmap.Config.ARGB_8888, true);
+        if (small != source) small.recycle();
+        int[] pixels = new int[w * h];
+        out.getPixels(pixels, 0, w, 0, 0, w, h);
+        int radius = gridBlurRadius(source.getWidth());
+        for (int pass = 0; pass < 3; pass++) {
+            pixels = HeroArt.boxBlur(pixels, w, h, radius, true);
+            pixels = HeroArt.boxBlur(pixels, w, h, radius, false);
+        }
+        out.setPixels(pixels, 0, w, 0, 0, w, h);
+        new Canvas(out).drawColor(0x661E1E1E);
+        return out;
+    }
+
+    static int gridBlurRadius(int width) {
+        return Math.max(1, Math.round(68f * width / 1920f / 12f));
+    }
+
+    private Picture decode(File file) {
         try {
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inJustDecodeBounds = true;
@@ -293,10 +363,11 @@ final class WallpaperPlayer {
             if (dimColor != 0) new Canvas(decoded).drawColor(dimColor);
             // One copy in GPU memory instead of a software bitmap plus its texture; the decode stays off the UI
             // thread for rotations, and Home's return no longer uploads 4-8 MB to the GPU.
+            Bitmap blurred = gridBackdrop == null ? null : blurWallpaper(decoded);
             Bitmap gpu = decoded.copy(Bitmap.Config.HARDWARE, false);
-            if (gpu == null) return decoded;
+            if (gpu == null) return new Picture(decoded, blurred);
             decoded.recycle();
-            return gpu;
+            return new Picture(gpu, blurred);
         } catch (Exception | OutOfMemoryError failure) {
             return null;
         }

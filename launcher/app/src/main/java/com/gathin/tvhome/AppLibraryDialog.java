@@ -19,7 +19,6 @@ import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -46,7 +45,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Predicate;
 
-/** On-demand installed-app picker. Uses the launcher's glass resources; no backdrop capture or blur. */
+/** On-demand installed-app picker, sharing the configured popup material with Home. */
 final class AppLibraryDialog {
     /**
      * The catalogue, the labels and the icons load here, off the UI thread: each label and icon opens the app's
@@ -75,6 +74,7 @@ final class AppLibraryDialog {
     /** Only the latest load fills the catalogue, and it shows the popup if an opening is waiting. */
     private final LibraryLoads loads = new LibraryLoads();
     private final Activity activity;
+    private final String popupStyle;
     private final Predicate<String> onHome;
     private final Runnable changed;
     private final LinearLayout panel;
@@ -139,17 +139,19 @@ final class AppLibraryDialog {
     }
 
     private void resize(int width, int height) {
-        popup.setWidth(width);
-        popup.setHeight(height);
-        if (popup.isShowing()) popup.update(width, height);
+        ViewGroup.LayoutParams params = panel.getLayoutParams();
+        params.width = width;
+        params.height = height;
+        panel.setLayoutParams(params);
     }
 
     /** library_excluded_apps (config.xml), never offered in the catalogue; empty by default, so existing
      *  setups are unaffected. See LibraryApps.excludedFromCatalog(). */
     private final Set<String> excludedApps;
 
-    AppLibraryDialog(Activity activity, boolean animations, boolean reducedMotion, boolean selectionMode, boolean okOpens, Predicate<String> onHome, Runnable changed, Runnable dismissed, Set<String> excludedApps) {
+    AppLibraryDialog(Activity activity, boolean animations, boolean reducedMotion, boolean selectionMode, boolean okOpens, Predicate<String> onHome, Runnable changed, Runnable dismissed, Set<String> excludedApps, String popupStyle) {
         this.activity = activity;
+        this.popupStyle = popupStyle;
         this.animations = animations;
         this.rtl = activity.getResources().getBoolean(R.bool.rtl_app_grid);
         this.reducedMotion = reducedMotion;
@@ -169,12 +171,23 @@ final class AppLibraryDialog {
         catalogWidth = Math.min(dp(800), Math.max(dp(200), decor.getWidth() - dp(64)));
         int width = catalogWidth;
         int height = dp(280);
-        popup = new PopupWindow(panel, width, height, true);
+        PopupMaterial.apply(activity.getWindow(), decor, panel, popupStyle);
+        // Draw the dim in the popup's first frame instead of waiting for Android's separate dim animation.
+        FrameLayout backdrop = new FrameLayout(activity);
+        backdrop.setBackgroundColor(0x8C000000);
+        backdrop.setClipChildren(false);
+        backdrop.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        backdrop.addView(panel, new FrameLayout.LayoutParams(width, height, Gravity.CENTER));
+        panel.setClickable(true);
+        popup = new PopupWindow(backdrop, ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT, true);
+        backdrop.setOnClickListener(v -> popup.dismiss());
         popup.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         popup.setOutsideTouchable(true);
         popup.setAnimationStyle(0);
         popup.setOnDismissListener(() -> {
             closed = true;
+            panel.setBackgroundResource(R.drawable.glass_panel);
             dismissActions();
             stopHighlight();
             icons.clear();
@@ -198,13 +211,6 @@ final class AppLibraryDialog {
 
     private void reveal() {
         popup.showAtLocation(activity.getWindow().getDecorView(), Gravity.CENTER, 0, 0);
-        View container = panel.getRootView();
-        if (container.getLayoutParams() instanceof WindowManager.LayoutParams) {
-            WindowManager.LayoutParams params = (WindowManager.LayoutParams) container.getLayoutParams();
-            params.flags |= WindowManager.LayoutParams.FLAG_DIM_BEHIND;
-            params.dimAmount = 0.55f;
-            activity.getWindowManager().updateViewLayout(container, params);
-        }
         panel.setAlpha(0f);
         panel.animate().alpha(1f).setDuration(reducedMotion ? Motion.REDUCED_MS : 180).start();
     }
@@ -526,6 +532,7 @@ final class AppLibraryDialog {
         if (spring != null) spring.cancel();
         View menuPanel = activity.getLayoutInflater().inflate(R.layout.popup_inputs, panel, false);
         LinearLayout rows = menuPanel.findViewById(R.id.rows);
+        PopupMaterial.apply(activity.getWindow(), activity.getWindow().getDecorView(), menuPanel, popupStyle);
         PopupWindow menu = new PopupWindow(menuPanel, dp(220), ViewGroup.LayoutParams.WRAP_CONTENT, true);
         actionPopup = menu;
         menu.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
@@ -533,6 +540,7 @@ final class AppLibraryDialog {
         menu.setAnimationStyle(0);
         menu.setElevation(0f);
         menu.setOnDismissListener(() -> {
+            menuPanel.setBackgroundResource(R.drawable.glass_panel);
             if (actionPopup == menu) actionPopup = null;
             restoreCardFocus();
         });

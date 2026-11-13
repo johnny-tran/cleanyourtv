@@ -26,12 +26,13 @@ final class PopupMaterial extends Drawable {
     private final Path clip = new Path();
     private final int[] location = new int[2];
 
-    static void apply(Window window, View root, View panel) {
+    static void apply(Window window, View root, View panel, String style) {
+        if (Config.POPUP_CLASSIC.equals(style)) return;
         if (!panel.isAttachedToWindow()) {
             panel.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
                 @Override public void onViewAttachedToWindow(View view) {
                     view.removeOnAttachStateChangeListener(this);
-                    apply(window, root, panel);
+                    apply(window, root, panel, style);
                 }
                 @Override public void onViewDetachedFromWindow(View view) { }
             });
@@ -79,7 +80,7 @@ final class PopupMaterial extends Drawable {
         root.getLocationOnScreen(location);
         rootX = location[0]; rootY = location[1];
         rootWidth = root.getWidth(); rootHeight = root.getHeight();
-        radius = 20 * root.getResources().getDisplayMetrics().density;
+        radius = root.getResources().getDimension(R.dimen.popup_corner_radius);
     }
 
     @Override protected void onBoundsChange(Rect bounds) {
@@ -97,13 +98,15 @@ final class PopupMaterial extends Drawable {
         paint.setStyle(Paint.Style.FILL);
         paint.setColor(0xFFFFFFFF);
         canvas.drawBitmap(backdrop, null, destination, paint);
-        paint.setColor(0xC0121418);
+        // The dock's material: 41% black over the same blur, so menus and the band read as one glass.
+        paint.setColor(0x69000000);
         canvas.drawRect(area, paint);
         canvas.restore();
         paint.setStyle(Paint.Style.STROKE);
-        paint.setStrokeWidth(panel.getResources().getDisplayMetrics().density * 0.5f);
-        paint.setColor(0x26FFFFFF);
-        canvas.drawRoundRect(area.left + 0.5f, area.top + 0.5f, area.right - 0.5f, area.bottom - 0.5f,
+        // The dock band's inner stroke: #fff at 10%, 2px (1dp) inside the edge.
+        paint.setStrokeWidth(panel.getResources().getDisplayMetrics().density);
+        paint.setColor(0x1AFFFFFF);
+        canvas.drawRoundRect(area.left + 1f, area.top + 1f, area.right - 1f, area.bottom - 1f,
                 radius, radius, paint);
     }
 

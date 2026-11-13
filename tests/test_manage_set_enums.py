@@ -147,6 +147,8 @@ class SetEnumTest(unittest.TestCase):
         rotation = ROTATION.read_text(encoding="utf-8")
         self.assertEqual(set(manage.ENUMS["glow_style"][0]), constants(config, "GLOW_"))
         self.assertEqual(set(manage.ENUMS["glass_style"][0]), constants(config, "GLASS_"))
+        self.assertEqual(set(manage.ENUMS["dock_style"][0]), constants(config, "DOCK_STYLE_"))
+        self.assertEqual(set(manage.ENUMS["popup_style"][0]), constants(config, "POPUP_"))
         self.assertEqual(set(manage.ENUMS["wallpaper_order"][0]), constants(rotation, "ORDER_"))
         # ClockFormat has no constant for "system": it is the mode the clock keeps for anything that is not 12
         # or 24, so the third value is named here and the two the Java compares are read out of it.
