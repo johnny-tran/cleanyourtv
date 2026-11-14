@@ -195,7 +195,7 @@ final class HomeHeader {
                 if (event.getAction() == KeyEvent.ACTION_DOWN) {
                     int current = rows.indexOfChild(v);
                     int next = nextRow(current, key == KeyEvent.KEYCODE_DPAD_UP);
-                    if (next != current && buttons[next].requestFocus()) v.playSoundEffect(
+                    if (next != current && buttons[next].requestFocus()) CursorSounds.play(v,
                             key == KeyEvent.KEYCODE_DPAD_UP ? SoundEffectConstants.NAVIGATION_UP
                                     : SoundEffectConstants.NAVIGATION_DOWN);
                 }
@@ -254,7 +254,7 @@ final class HomeHeader {
         private Runnable afterClose;
 
         SidebarPopup(View wrapper, MorphPanel panel) {
-            super(wrapper, -1, -1, true);
+            super(CursorSounds.wrap(wrapper), -1, -1, true);
             this.panel = panel;
             setAnimationStyle(0);
         }

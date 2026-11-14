@@ -198,7 +198,7 @@ final class AppLibraryDialog {
         backdrop.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         backdrop.addView(panel, new FrameLayout.LayoutParams(width, height, Gravity.CENTER));
         panel.setClickable(true);
-        popup = new PopupWindow(backdrop, ViewGroup.LayoutParams.MATCH_PARENT,
+        popup = new PopupWindow(CursorSounds.wrap(backdrop), ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT, true);
         backdrop.setOnClickListener(v -> popup.dismiss());
         popup.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
@@ -557,7 +557,7 @@ final class AppLibraryDialog {
         UiFont.apply(menuPanel);
         LinearLayout rows = menuPanel.findViewById(R.id.rows);
         PopupMaterial.apply(activity.getWindow(), activity.getWindow().getDecorView(), menuPanel, popupStyle);
-        PopupWindow menu = new PopupWindow(menuPanel, dp(220), ViewGroup.LayoutParams.WRAP_CONTENT, true);
+        PopupWindow menu = new PopupWindow(CursorSounds.wrap(menuPanel), dp(220), ViewGroup.LayoutParams.WRAP_CONTENT, true);
         actionPopup = menu;
         menu.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         menu.setOutsideTouchable(true);

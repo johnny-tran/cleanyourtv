@@ -162,4 +162,7 @@
     <string name="watch_layout_two">שני כרטיסים גדולים</string>
     <string name="watch_layout_three">שלושה כרטיסים גדולים</string>
     <string name="watch_layout_compact">קומפקטית</string>
+    <string name="cursor_sounds_on">צלילי ניווט: פעילים</string>
+    <string name="cursor_sounds_off">צלילי ניווט: כבויים</string>
+    <string name="cursor_sounds_save_failed">לא ניתן לשמור את העדפת צלילי הניווט.</string>
 </resources>

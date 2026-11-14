@@ -232,12 +232,12 @@ final class WatchNextRow {
             if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
             if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
                 host.onLeaveUp(view);
-                if (!view.isFocused()) view.playSoundEffect(SoundEffectConstants.NAVIGATION_UP);
+                if (!view.isFocused()) CursorSounds.play(view, SoundEffectConstants.NAVIGATION_UP);
                 return true;
             }
             if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
                 host.onLeaveDown();
-                if (!view.isFocused()) view.playSoundEffect(SoundEffectConstants.NAVIGATION_DOWN);
+                if (!view.isFocused()) CursorSounds.play(view, SoundEffectConstants.NAVIGATION_DOWN);
                 return true;
             }
             if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
@@ -246,7 +246,7 @@ final class WatchNextRow {
                 // Handle the move here: HorizontalScrollView changes focus without the grid's system tick.
                 if (target >= 0 && target < row.getChildCount()
                         && row.getChildAt(target).findViewById(R.id.watch_card).requestFocus()) {
-                    view.playSoundEffect(left ? SoundEffectConstants.NAVIGATION_LEFT
+                    CursorSounds.play(view, left ? SoundEffectConstants.NAVIGATION_LEFT
                             : SoundEffectConstants.NAVIGATION_RIGHT);
                 }
                 return true;

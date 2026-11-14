@@ -467,7 +467,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(CursorSounds.wrap(getLayoutInflater().inflate(R.layout.activity_main, null)));
         UiFont.apply(getWindow().getDecorView());
         density = getResources().getDisplayMetrics().density;
         // config.xml, overlaid by config.json from a pushed theme (see Config and tools/theme.sh).
@@ -970,12 +970,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 // it is showing, so the row is reachable without going through the dock.
                 if (watchNextRow != null && watchNextRow.visible()) {
                     watchNextRow.focus();
-                    if (!v.isFocused()) v.playSoundEffect(SoundEffectConstants.NAVIGATION_DOWN);
+                    if (!v.isFocused()) CursorSounds.play(v, SoundEffectConstants.NAVIGATION_DOWN);
                     return true;
                 }
                 // Back to the dock tile Up came from, not wherever the focus finder lands.
                 focusTile(singleRow ? lastFocused : lastFocused % COLUMNS);
-                if (!v.isFocused()) v.playSoundEffect(SoundEffectConstants.NAVIGATION_DOWN);
+                if (!v.isFocused()) CursorSounds.play(v, SoundEffectConstants.NAVIGATION_DOWN);
                 return true;
             }
             if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
@@ -989,7 +989,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 int next = TopBarNavigation.next(available, current, keyCode == KeyEvent.KEYCODE_DPAD_LEFT,
                         bar.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL);
                 if (next != current && bar.getChildAt(next).requestFocus()) {
-                    v.playSoundEffect(keyCode == KeyEvent.KEYCODE_DPAD_LEFT
+                    CursorSounds.play(v, keyCode == KeyEvent.KEYCODE_DPAD_LEFT
                             ? SoundEffectConstants.NAVIGATION_LEFT : SoundEffectConstants.NAVIGATION_RIGHT);
                 }
                 return true;
@@ -2629,7 +2629,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 // showing, else leaves for the top bar as before.
                 if (watchNextRow != null && watchNextRow.visible()) {
                     watchNextRow.focus();
-                    if (watchNextRow.focusedCard() != null) grid.playSoundEffect(SoundEffectConstants.NAVIGATION_UP);
+                    if (watchNextRow.focusedCard() != null) CursorSounds.play(grid, SoundEffectConstants.NAVIGATION_UP);
                     return true;
                 }
                 return false;
@@ -2645,7 +2645,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         focusTile(target);
         // The default focus search clicks for Left/Right; Up/Down are handled here, so click for them too.
-        grid.playSoundEffect(keyCode == KeyEvent.KEYCODE_DPAD_UP
+        CursorSounds.play(grid, keyCode == KeyEvent.KEYCODE_DPAD_UP
                 ? SoundEffectConstants.NAVIGATION_UP : SoundEffectConstants.NAVIGATION_DOWN);
         return true;
     }
@@ -3798,7 +3798,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private PopupWindow glassPopup(View panel, int width) {
         PopupMaterial.apply(getWindow(), root, panel, popupStyle);
-        final PopupWindow popup = new PopupWindow(panel, width, ViewGroup.LayoutParams.WRAP_CONTENT, true);
+        final PopupWindow popup = new PopupWindow(CursorSounds.wrap(panel), width, ViewGroup.LayoutParams.WRAP_CONTENT, true);
         popup.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));   // needed for Back to dismiss
         popup.setOutsideTouchable(true);
         popup.setAnimationStyle(0);
@@ -3924,6 +3924,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (moduleCards) addSettingsMenuRow(rows, popup, R.string.module_cards, this::showModuleCards);
         if (dockRow) addSettingsMenuRow(rows, popup, R.string.dock_edit, this::startDockEdit);
         addSettingsMenuRow(rows, popup, R.string.reorder, this::toggleReorder);
+        boolean cursorSounds = CursorSounds.enabled(this);
+        addSettingsMenuRow(rows, popup, cursorSounds ? R.string.cursor_sounds_on : R.string.cursor_sounds_off, () -> {
+            if (!CursorSounds.setEnabled(this, !cursorSounds)) {
+                Toast.makeText(this, R.string.cursor_sounds_save_failed, Toast.LENGTH_LONG).show();
+            }
+        });
         if (restoreWatchNext) {
             addSettingsMenuRow(rows, popup, R.string.watch_next_restore, () -> {
                 if (WatchNextDismissals.restore(this)) refreshWatchNext();
@@ -4201,7 +4207,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         final Dialog dialog = new Dialog(this);
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
-        dialog.setContentView(panel);
+        dialog.setContentView(CursorSounds.wrap(panel));
         dialog.setCanceledOnTouchOutside(false);
         Window w = dialog.getWindow();
         if (w != null) {

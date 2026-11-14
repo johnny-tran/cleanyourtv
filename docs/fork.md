@@ -48,6 +48,7 @@ else comes from upstream untouched, so all of upstream's new features arrive wit
 ## What the feature touches (this is the rebase surface; keep it short)
 
 New files (cannot conflict):
+- `launcher/app/src/main/java/com/gathin/tvhome/CursorSounds.java` — saved launcher-only navigation sound toggle and silent framework focus fallback.
 - `launcher/app/src/main/java/com/gathin/tvhome/SidebarButtonMaterial.java` — cached sidebar button fills, focused blend and shared inset lighting from Figma.
 - `launcher/app/src/main/java/com/gathin/tvhome/PopupMaterial.java` — a one-shot blurred Home backdrop with dark tint for popup menus.
 - `launcher/app/src/main/java/com/gathin/tvhome/PopupPlacement.java` — keeps dropdown menus at least 24dp inside the viewport while preserving anchor alignment when it fits; accounts for focus zoom to keep a consistent 10dp tile-to-menu gap.
@@ -679,3 +680,23 @@ One short four-key navigation sample at each endpoint records GPU p50/p90 7.4/15
 frames, zero over 16.7ms) and 7.5/8.5ms at 100% (88 frames, zero over 16.7ms). These small warm samples
 are not a broad performance guarantee; lower settings add one dock-sized compositing layer.
 Physical-remote acceptance and other devices remain unverified. TV returned to confirmed sleep.
+
+
+### Cursor-move sound toggle
+
+Hold OK on the avatar/clock pill and select **Cursor sounds: On/Off** to toggle native navigation
+sounds. The preference (`cursor_sounds` in launcher settings) defaults on, applies immediately and
+survives restarts and theme changes. Click sounds, TV-wide sound settings and other apps are unchanged.
+`CursorSounds.java` gates the explicit navigation ticks in `MainActivity.java`, `HomeHeader.java` and
+`WatchNextRow.java`. A shared content wrapper performs the framework's remaining D-pad focus search
+silently when disabled: ViewRootImpl otherwise plays its own ticks regardless of View sound flags.
+The wrapper covers Home, its popup menus, App Library/actions, the module-card prompt and the launcher
+and quick-settings activities. Existing handled key paths still run first; Back, OK and non-arrow
+keys keep their normal dispatch. `strings.xml` supplies the state/action row and save-failure message.
+Validation: release build, zero-error lint, all 368 JVM tests and fork-map checks pass (621,713-byte
+APK). Installed on Sony Android TV 12. Injected D-pad checks exercise Off across Watch Next, dock,
+grid, sidebar, App Library and launcher settings; reopening the avatar menu after those checks
+retains Off. Toggling back restores On and normal menu navigation; the TV-wide sound setting remains
+unchanged. Private screenshot: `shots/cursor-sounds-off.png`. Original On setting restored and TV
+returned to confirmed sleep. Actual audible output and physical-remote behavior need user acceptance;
+other devices and settings confirmation dialogs were not tested.

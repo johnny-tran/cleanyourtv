@@ -170,4 +170,7 @@
     <string name="watch_next_restore">Restore Continue Watching</string>
     <string name="watch_next_save_failed">Could not save Continue Watching changes.</string>
     <!-- end continue watching (fork) -->
+    <string name="cursor_sounds_on">Cursor sounds: On</string>
+    <string name="cursor_sounds_off">Cursor sounds: Off</string>
+    <string name="cursor_sounds_save_failed">Could not save cursor sound preference.</string>
 </resources>

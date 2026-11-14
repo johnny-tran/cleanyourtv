@@ -34,7 +34,8 @@ Themes set the same keys plus a background colour and a wallpaper.
 
 ## Launcher settings and the default home
 
-Click **Settings** for the TV's own settings. Hold OK on it for its menu:
+Click **Settings** for the TV's own settings. Hold OK on it for its menu
+(or hold OK on the clock/avatar pill with the fork's `sidebar_header`):
 
 - **Launcher settings**. With `launcher_settings_button` a click opens those instead, and the menu
   leaves the row out.
@@ -45,6 +46,8 @@ Click **Settings** for the TV's own settings. Hold OK on it for its menu:
 - **Edit dock**, with `dock_row`.
 - **Reorder apps**: OK picks an app up, the arrows move it, Back places it, and Back again finishes.
   With `tile_menu` (on by default since 3.3), holding OK on a tile offers **Move**, which picks that app up straight away.
+- **Cursor sounds: On/Off** (fork): toggle cursor-move sounds across Home and its menus. The choice
+  is saved independently of themes, starts On, and leaves click sounds and other apps unchanged.
 - **Restore Continue Watching**, when local removals exist: show removed titles that are still in the shared feed.
 - **Restart…** while `HomeKeyService` runs, which opens the system power menu (a launcher may not
   restart the TV itself).
