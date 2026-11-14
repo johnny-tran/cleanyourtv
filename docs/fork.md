@@ -48,6 +48,11 @@ else comes from upstream untouched, so all of upstream's new features arrive wit
 ## What the feature touches (this is the rebase surface; keep it short)
 
 New files (cannot conflict):
+- `launcher/app/src/main/java/com/gathin/tvhome/HomeHeader.java` — opt-in greeting, clock/avatar pill and anchored glass sidebar.
+- `launcher/app/src/main/java/com/gathin/tvhome/DockLayout.java` and `DockBackdrop.java` — dark dock geometry and cached blurred material.
+- `launcher/app/src/main/java/com/gathin/tvhome/TileShadow.java` — card-local focus shadow and cached resting radiosity.
+- `launcher/app/src/main/res/drawable/watch_scrim.xml` — large-card metadata gradient.
+- `launcher/app/src/main/res/values/dimens.xml` and `ids.xml` — shared popup radii and tile-shadow tag.
 - `launcher/app/src/main/java/com/gathin/tvhome/CursorSounds.java` — saved launcher-only navigation sound toggle and silent framework focus fallback.
 - `launcher/app/src/main/java/com/gathin/tvhome/SidebarButtonMaterial.java` — cached sidebar button fills, focused blend and shared inset lighting from Figma.
 - `launcher/app/src/main/java/com/gathin/tvhome/PopupMaterial.java` — a one-shot blurred Home backdrop with dark tint for popup menus.
@@ -62,7 +67,12 @@ New files (cannot conflict):
 - `launcher/app/src/main/res/layout/item_watch.xml` — one watch card.
 
 Edited files, each marked with a `continue watching (fork)` comment where possible:
-- `launcher/app/src/main/res/drawable/glass_panel.xml` and `res/values/dimens.xml` — share the popup corner radius between Classic and Glass.
+- `launcher/app/src/main/java/com/gathin/tvhome/UiFont.java` and `ClockScene.java` — optional private prototype typography across Home, menus and clock screensavers.
+- `launcher/app/src/main/java/com/gathin/tvhome/LauncherSettingsActivity.java` and `res/layout/activity_launcher_settings.xml` — saved Watch Next layout choices and existing settings lifecycle.
+- `launcher/app/src/main/java/com/gathin/tvhome/QuickSettingsActivity.java` — shared typography and launcher-local cursor sound control.
+- `launcher/app/src/main/java/com/gathin/tvhome/WallpaperPlayer.java` — cached blurred wallpaper when navigating below the dock.
+- `tools/manage.py`, `tests/test_manage_set_enums.py` and `tests/test_shipped_config_values.py` — fork enum editing and validation.
+- `launcher/app/src/main/res/drawable/glass_panel.xml` — uses the shared popup corner radius for Classic and Glass.
 - `launcher/app/src/main/res/drawable/input_row_bg.xml` — the menu row's pill corners, shared by Classic and Glass.
 - `launcher/app/src/main/java/com/gathin/tvhome/AppLibraryDialog.java` — reserves the same offset-outline drawing space as Home and shares its configured popup material.
 - `launcher/app/src/main/java/com/gathin/tvhome/DockDecoration.java` — even-padding geometry reserves equal clearance around focused bounds and derives concentric corners.
@@ -70,20 +80,20 @@ Edited files, each marked with a `continue watching (fork)` comment where possib
 - `AGENTS.md` — the one-line pointer to this page, so a coding agent finds it.
 - `launcher/app/src/main/AndroidManifest.xml` — the `READ_TV_LISTINGS` and `INTERNET` permissions.
 - `launcher/app/src/main/java/com/gathin/tvhome/Config.java` and `res/values/config.xml` — the `watch_next`
-  boolean, off by default.
+  boolean, off by default, plus the opt-in header, dock/popup materials and Watch Next layout choices.
 - `launcher/app/src/main/java/com/gathin/tvhome/Config.java`, `res/values/config.xml`,
   `MainActivity.updateGreeting()` and `res/values/strings.xml` — the `greeting_text` key (see below).
 - `launcher/app/src/main/java/com/gathin/tvhome/AppAdapter.java` — delegates focus motion to `TileFocus`; shares corner and artwork colour rules with posters.
 - `launcher/app/src/main/res/layout/item_app.xml` — shares the `TileName` style with poster labels.
 - `launcher/app/src/main/java/com/gathin/tvhome/GlassView.java` — morphs the shared highlight between poster and app tile sizes; offsets its bright outline and glow outside the artwork with a 1.5dp clear gap.
 - `launcher/app/src/main/java/com/gathin/tvhome/MainActivity.java` — build the row, refresh it in
-  `onResume`, lay it above the dock, route the D-pad in and out; park the compact dock with a 16dp next-row peek.
+  `onResume`, lay it above the dock, route the D-pad in and out, integrate the sidebar and shared
+  focus, and preserve each dock layout's parked geometry.
 - `launcher/app/src/main/res/layout/activity_main.xml` — the row's container.
 - `launcher/app/src/main/res/values-iw/strings.xml` — Hebrew labels for the sidebar, Watch Next layouts and cursor sound control.
 - `launcher/app/src/main/res/values/strings.xml`, `styles.xml` — the header string, its `Caption` style and shared `TileName` style.
-- `themes/README.md`, `docs/switches.md` — the `watch_next` key's rows, which the repository's own tests
-  require of any new key.
-- `docs/launcher.md`, `tests/test_settings_menu_docs.py` — document and check the conditional Continue Watching restore menu action.
+- `themes/README.md`, `docs/switches.md` — fork configuration keys, material semantics and default-state screenshot references.
+- `docs/launcher.md`, `tests/test_settings_menu_docs.py` — launcher settings, avatar long-press actions and conditional Watch Next restoration.
 
 ## Deliberate differences from upstream
 
@@ -114,8 +124,8 @@ Hold OK on a Continue watching card to open the same glass menu as app tiles, th
 Continue Watching**. This stores only its package/content identity and last engagement timestamp in the
 launcher's private preferences; it does not delete the streaming app's shared entry or viewing history.
 The card returns when the app publishes a newer engagement timestamp. Apps that do not share updated
-Watch Next data cannot trigger this automatically. Hold the top-right gear and choose **Restore Continue
-Watching** to clear local removals for all titles still available in the shared feed.
+Watch Next data cannot trigger this automatically. Hold the clock/avatar pill (or the top-right
+Settings button with the stock header) and choose **Restore Continue Watching** to clear local removals for all titles still available in the shared feed.
 
 ## Replacing the greeting
 
@@ -205,13 +215,29 @@ References: [Apple dark blur](https://developer.apple.com/documentation/uikit/ui
 - `dock_glass` retains its original faint translucent gradient. The experimental milky dock backdrop
   and floating-shadow focus style were reverted; neither is part of the final change.
 
-## Current device overlay (not committed)
+## Last verified device setup (2026-11-14; not committed)
 
-The current local theme uses six columns, `glass_style=halo`, `dock_glass=true`,
-`dock_even_padding=true`, `single_row=false`, `rows_below_dock=0`, `always_show_names=false`,
-`app_glow=false` and `ambient_glow=false`. The network button and date are hidden; the top-right
-controls use icons. These are device choices, not new defaults in `config.xml`. The theme overlay,
-saved app order, screenshots and device backups remain private and outside the commit.
+This is the setup left after the latest recorded TV checks, not a live device query. The private
+theme overlay uses six columns, `dock_style=dark`, `glass_style=lift`, `popup_style=glass`,
+`sidebar_header=true` and `watch_next=true`. App-tile labels at rest, the date, app-color glow and
+ambient glow are hidden/off (`always_show_names=false`, `hide_date=true`, `app_glow=false`, `ambient_glow=false`).
+The dark dock retains its small next-row peek with `single_row=false` and `rows_below_dock=0`.
+A Fuji wallpaper replaces the app-art backdrop (`cinematic_art=0`).
+
+The top-right control is now the clock/avatar pill. Click it for the glass sidebar's Inputs,
+App Library and System Settings actions; hold OK for launcher actions and settings. App tiles use
+lift and a local shadow; large Watch Next cards use their shared shadow with 10% focus enlargement.
+The earlier halo and moving highlight are hidden. The private SF Pro Medium file and circular avatar artwork live in `header-assets/`; neither is shipped in Git or the APK.
+
+Saved on-TV choices left by testing are **Three large cards** (`watch_next_layout=three`),
+**100% dock opacity**, and **Cursor sounds: On**. These preferences are separate from the theme JSON:
+layout and opacity follow the existing theme-reset flow; cursor sounds survives theme changes.
+The theme overlay, saved app order, screenshots and device backups remain private. Bundled defaults
+remain unchanged: stock header, Classic dock, Compact Watch Next presentation, and Watch Next off.
+
+The sections below preserve the history of each implementation and its tests. Earlier references
+to Halo, Two large cards selected, geometry trials and smaller test counts describe those earlier
+checks; they do not supersede this last-verified setup or establish fresh device verification.
 
 ## Validation of the UI refinements
 
@@ -505,7 +531,8 @@ Missing episode data leaves the two-line layout, and missing service apps omit t
 Compact preserves the earlier card sizing, labels and focus motion. No recommendations are mixed in.
 
 `Config.java` and `config.xml` add `watch_next_layout` (`compact`, `two`, `three`), with Compact as the
-safe bundled default. The owner's TV selects Two large cards. Theme JSON and `tools/manage.py` accept
+safe bundled default. The initial TV preview selected Two large cards; see the last-verified device
+setup above for the later saved choice. Theme JSON and `tools/manage.py` accept
 the same values. The existing preference/revision/theme-reset flow carries the on-TV override.
 `LauncherSettingsActivity.java`, `activity_launcher_settings.xml` and `strings.xml` expose the three
 choices without changing dock columns. `themes/README.md` and `docs/switches.md` document the control.
