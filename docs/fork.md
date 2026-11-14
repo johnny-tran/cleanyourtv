@@ -662,3 +662,20 @@ strips now contain the card. Injected checks cover pickup, right/left movement, 
 dock columns, focus in the grid below, exit and full-opacity restoration. The test move was reversed
 and the final screenshot confirms the original app order. No current launcher crashes were logged.
 TV returned to confirmed sleep. Physical-remote testing and other devices remain unverified.
+
+### Opacity control for the custom dock
+
+`DockDecoration.java` now applies the existing `dock_opacity` setting to the complete dark material,
+including the cached blurred background, 41% black tint and inside stroke. 100% preserves the current
+Figma appearance and skips the extra compositing layer. Lower settings blend that completed material
+over the wallpaper as a unit; they do not replace its tint with 70/50/30% black. App tiles remain
+outside that opacity layer. Existing settings, preference/theme reset handling and classic dock
+behavior are reused. `themes/README.md` documents the custom material interpretation.
+Validation: release build, zero-error lint, all 367 JVM tests and fork-map checks pass (620,577-byte
+APK). Installed on Sony Android TV 12; D-pad settings checks cover all four presets. Pixel assertions
+confirm 100% matches the previous dock, intermediate settings blend linearly, and sampled opaque tile
+pixels are identical across settings. Original 100% appearance is restored and checked again.
+One short four-key navigation sample at each endpoint records GPU p50/p90 7.4/15.9ms at 30% (83
+frames, zero over 16.7ms) and 7.5/8.5ms at 100% (88 frames, zero over 16.7ms). These small warm samples
+are not a broad performance guarantee; lower settings add one dock-sized compositing layer.
+Physical-remote acceptance and other devices remain unverified. TV returned to confirmed sleep.
