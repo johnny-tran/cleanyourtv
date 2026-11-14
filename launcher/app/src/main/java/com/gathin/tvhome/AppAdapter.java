@@ -460,6 +460,8 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             View label = v.findViewById(R.id.label);
             label.setPadding(label.getPaddingLeft(), label.getPaddingTop(), label.getPaddingRight(), Math.round(4f * density));
         }
+        // Reorder dimming must not flatten this cell into a layer that clips its enlarged card/shadow.
+        v.forceHasOverlappingRendering(false);
         return new Holder(v, listener, animations, advancedEffects, reducedMotion, restNameAlpha, focusOvershoot, focusStyle, darkDock);
     }
 

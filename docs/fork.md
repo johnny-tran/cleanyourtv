@@ -647,3 +647,18 @@ Validation: release build, zero-error lint and all 367 JVM tests pass (620,493-b
 and checked in the resting three-card TV screenshot; the first card starts at x90 and heading text
 has the intended 32px inset. TV returned to confirmed sleep. Two uses the same heading padding;
 it was not separately captured again for this padding-only correction.
+
+### Reorder dimming without clipping focused cards
+
+`AppAdapter.java` disables overlapping-rendering flattening on the app cell, whose card and name
+already allow drawing outside its bounds. With reorder's 45% cell alpha, Android otherwise creates
+a cell-sized opacity layer and clips the enlarged card and shadow at the cell's left/right edges.
+The same cell now keeps its full rounded focus silhouette when faint, picked up or dropped.
+The existing alpha values, reorder handlers, order persistence and dock-edit behavior are unchanged.
+Validation: release build, zero-error lint, all 367 JVM tests and fork-map checks pass (620,493-byte
+APK). Installed on Sony Android TV 12. Before/after screenshots reproduce and remove clipping on
+both sides of a faint focused card; pixel assertions confirm that the two formerly empty side
+strips now contain the card. Injected checks cover pickup, right/left movement, drop, first/last
+dock columns, focus in the grid below, exit and full-opacity restoration. The test move was reversed
+and the final screenshot confirms the original app order. No current launcher crashes were logged.
+TV returned to confirmed sleep. Physical-remote testing and other devices remain unverified.
