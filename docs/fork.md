@@ -495,6 +495,43 @@ The caption now also matches the greeting at 15sp, with white opacity increased 
 The visible English shelf heading is now “Watch Next” (`strings.xml`, existing `continue_watching` key).
 This is a label change only; data sources, sorting, dismissal actions and card layout are unchanged.
 
+### Watch Next layout variants
+
+The approved large-card design keeps 16:9 art, two or three complete cards plus a partial next card,
+10% focus enlargement, a bottom gradient, show title and installed service name. On focus, the title
+rises and a single-line `S2 E4 · Episode title` fades into the gap; long text ellipsizes at the end.
+Missing episode data leaves the two-line layout, and missing service apps omit the service label.
+Compact preserves the earlier card sizing, labels and focus motion. No recommendations are mixed in.
+
+`Config.java` and `config.xml` add `watch_next_layout` (`compact`, `two`, `three`), with Compact as the
+safe bundled default. The owner's TV selects Two large cards. Theme JSON and `tools/manage.py` accept
+the same values. The existing preference/revision/theme-reset flow carries the on-TV override.
+`LauncherSettingsActivity.java`, `activity_launcher_settings.xml` and `strings.xml` expose the three
+choices without changing dock columns. `themes/README.md` and `docs/switches.md` document the control.
+
+`WatchNextRow.java`, `item_watch.xml`, `watch_scrim.xml` and `styles.xml` render the overlays, retain
+reserved space above the dock, and preserve launch, navigation sounds and long-press removal.
+`WatchNext.java` formats episode metadata; `WatchNextRowTest.java` checks missing fields, dot spacing,
+layout sizing/peek and invalid choices. `TileFocus.java` accepts an explicit scale while keeping the
+existing shared motion/shadow renderer; `MainActivity.java` fits the shared highlight to that scale.
+Artwork remains provider-supplied. The agreed written behavior and reviewed Figma frames are the
+reference; Figma API rate limits prevented an exact layer/spec comparison for this implementation.
+
+Large-card validation: release lint/assembly and 364 JVM tests pass (617,849-byte APK), plus 38
+focused Python checks for enum handling, shipped config values, settings docs and fork tracking.
+Installed on the Sony Android TV 12. Injected D-pad checks switch through Three, Compact and Two,
+return to Home, traverse cards and restore the first-card margin. Screenshots cover all three modes
+at rest and with one card focused; the three-card state visibly ellipsizes a long episode title.
+Two large cards remains selected. A touch-injected settings selection initially left the dock
+unparked until Home; the actual D-pad settings path returned correctly without that workaround.
+The native injected long-press was too short for the existing 550ms hold handler and opened playback;
+Home was restored immediately. Physical-remote hold-menu acceptance therefore remains pending.
+
+The same short injected navigation sample before/after collected 119 GPU frames each: p50/p90
+4.7/6.7ms before and 6.4/8.4ms after, with 0/119 over 16.7ms in either sample. This is a small local
+regression sample, not a general device-performance claim. No recommendations, launch permissions,
+Home helpers, dock settings or streaming packages were changed. TV returned to sleep.
+
 ### Sidebar opening work off the UI thread
 
 `PopupMaterial.java` now runs captured-backdrop blur and sidebar lighting masks on one shared
@@ -554,6 +591,34 @@ Injected checks cover Back during preparation, reopening, all rows and App Libra
 crashes were logged. Home is left visible. Physical-remote feel and forced capture-failure testing
 remain unverified.
 
+### Watch Next typography from the live Figma frames
+
+The host Desktop Bridge supplied the exact two- and three-card text specifications after the cloud
+API quota block. `WatchNextRow.java` now uses 28px/22px title/service text with 33px/26px line boxes
+for Two, and 26px/20px text with 120% line boxes for Three, at the 1920px design width. Both use
+SF Pro Medium, -0.2px tracking and a 2px text-stack gap. The existing 10% card focus scale also scales
+the text. `item_watch.xml` uses the service fill #EBEBF5 at 30% opacity. Text and progress have 40px
+side insets; the progress bottom inset is 32px for Two and 24px for Three, with 24px/16px between
+the service line and progress. Progress fill measures the inset track width rather than the full card.
+The focus-only episode line keeps its earlier color and behavior, takes the service text metrics,
+and moves the title by its line height plus the shared gap. Those episode details are not specified
+in the current Figma frames. Compact retains its original presentation.
+Validation: release assembly, zero-error lint and all 367 JVM tests pass (620,017-byte APK), plus
+the fork documentation checks. Installed on Sony Android TV 12; screenshots verify Two and Three
+at rest and focused, including the episode reveal. Three was selected on arrival and restored after
+testing. Physical-remote feel and enlarged accessibility font settings were not checked in this pass.
+
+### Refined Watch Next gradients and progress
+
+The updated Two and Three Figma cards limit the scrim to the bottom half of the poster, with a
+transparent-to-60%-black ramp ending at 80% of that half, then remaining constant to the bottom.
+`watch_scrim.xml` defines the ramp; `WatchNextRow.java` sizes and bottom-aligns it. Two retains 40px
+side padding, an 8px progress bar, 32px bottom inset and 24px service-to-progress gap. Three uses
+32px side padding, a 6px progress bar, 24px bottom inset and 16px service-to-progress gap. These are
+1920px design values, converted to dp. The track is white at 30%, the fill is #D9D9D9, and both ends
+are rounded to half the bar height. Existing per-layout typography and 10% focus scale remain.
+Compact deliberately retains its earlier external-label/edge-progress presentation.
+
 ### Sidebar sizing from the updated focus variants
 
 `HomeHeader.java` matches all three revised Figma states with a 440x413px panel, 416x84px buttons,
@@ -574,3 +639,11 @@ at 2x resolution. Three-card layout is restored. The TV entered sleep during the
 action check, so that action and performance sampling were not completed in this pass; no changes
 to those action handlers were made. Sleep was explicitly requested and confirmed with
 `mWakefulness=Asleep`. Physical-remote feel and enlarged accessibility fonts remain unverified.
+
+The large-layout Watch Next heading has its own 32px start inset from the resting card edge, as in
+both Figma frames. `WatchNextRow.java` applies that as text padding so the existing dock-aligned
+row margin and scroll origin remain intact. Card content insets and Compact are unchanged.
+Validation: release build, zero-error lint and all 367 JVM tests pass (620,493-byte APK). Installed
+and checked in the resting three-card TV screenshot; the first card starts at x90 and heading text
+has the intended 32px inset. TV returned to confirmed sleep. Two uses the same heading padding;
+it was not separately captured again for this padding-only correction.

@@ -39,6 +39,47 @@
             android:fontFamily="@string/font_medium" />
 
         <View
+            android:id="@+id/watch_scrim"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/watch_scrim"
+            android:visibility="gone" />
+
+        <FrameLayout
+            android:id="@+id/watch_metadata"
+            android:layout_width="match_parent"
+            android:layout_height="96dp"
+            android:layout_gravity="bottom"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:paddingBottom="14dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/watch_title"
+                style="@style/WatchOverlayText"
+                android:layout_gravity="bottom"
+                android:layout_marginBottom="18dp" />
+
+            <TextView
+                android:id="@+id/watch_episode"
+                style="@style/WatchOverlayText"
+                android:layout_gravity="bottom"
+                android:layout_marginBottom="18dp"
+                android:textSize="11.5sp"
+                android:textColor="#DDFFFFFF"
+                android:alpha="0"
+                android:translationY="4dp" />
+
+            <TextView
+                android:id="@+id/watch_service"
+                style="@style/WatchOverlayText"
+                android:layout_gravity="bottom"
+                android:textSize="11.5sp"
+                android:textColor="#4DEBEBF5" />
+        </FrameLayout>
+
+        <View
             android:id="@+id/progress_track"
             android:layout_width="match_parent"
             android:layout_height="4dp"

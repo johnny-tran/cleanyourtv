@@ -471,6 +471,8 @@
          default; set true here or with "watch_next": true in a theme. Poster art is downloaded, which is why
          this fork adds INTERNET. See docs/fork.md. -->
     <bool name="watch_next">false</bool>
+    <!-- Fork: compact preserves the existing shelf; two/three use large landscape cards and overlays. -->
+    <string name="watch_next_layout" translatable="false">compact</string>
 
     <!-- Reduced motion: for TVs whose GPU cannot keep up (MediaTek MT5895 on Android 10 is the known case).
          true keeps the GPU drawing path but calms the movement and draws far fewer frames: the highlight

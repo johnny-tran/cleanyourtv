@@ -40,6 +40,7 @@ final class Config {
     static final String FILE_NAME = "config.json";
     static final String WALLPAPER_NAME = "wallpaper.jpg";
     static final String SETTINGS_NAME = "launcher_settings";
+    static final String WATCH_NEXT_LAYOUT_KEY = "watch_next_layout";
     static final String ROWS_BELOW_DOCK_KEY = "rows_below_dock";
     static final String WALLPAPER_CHOICE_KEY = "wallpaper_choice";
     static final String DOCK_OPACITY_KEY = "dock_opacity";
@@ -107,6 +108,7 @@ final class Config {
     final boolean moduleCards;
     /** ---- continue watching (fork) ---- Show the Watch Next row on Home (config.xml / theme watch_next). */
     final boolean watchNext;
+    final String watchNextLayout;
     /** Calmer motion for weak GPUs (config.xml, reduced_motion): stiff spring, short fades, no replay. */
     final boolean reducedMotion;
     /** Open the Live TV app on the first Home after the TV starts (config.xml, boot_to_live_tv). */
@@ -309,7 +311,7 @@ final class Config {
                    boolean handleViewInputs, boolean tileMenu, boolean dockEvenPadding, boolean dockBand, boolean cinematicDots, boolean cinematicWhiteFocus, boolean wifiStatusColor, int cinematicScrim, int cinematicArt,
                    Map<String, Set<String>> wallpaperMoods, boolean gamepadPassthrough, boolean consumeVolumeKeys, boolean volumePausesFilter, boolean homeIgnoreChannelKeys, boolean powerOnHome, boolean homeLongPressHome, boolean wifiStatusWarnings, List<String> topBarApps, boolean showGreeting, boolean headerWhite, boolean clockWallpaper, int clockWallpaperDim, boolean clockGlow, String glassStyle, boolean singleRow, boolean dockBandAll, boolean lunarDate, int lunarUtcOffset, boolean dateBelowClock, boolean hideDate, boolean vpnPill, String locale, boolean powerOnHomeAlways, boolean inputsConnectedOnly, boolean inputsCecStateOnly,
                    int openOnStartNetworkWait, boolean openOnStartOnWake, boolean iconOnlyVpn, String clockFormat, boolean backOpensClock, boolean glowSnap,
-                   boolean settingsKeyClearTask, boolean watchNext, String popupStyle, String dockStyle, boolean sidebarHeader) {
+                   boolean settingsKeyClearTask, boolean watchNext, String popupStyle, String dockStyle, boolean sidebarHeader, String watchNextLayout) {
         this.handleViewInputs = handleViewInputs;
         this.tileMenu = tileMenu;
         this.inputKeycodes = inputKeycodes;
@@ -365,6 +367,7 @@ final class Config {
         this.glowSnap = glowSnap;
         this.settingsKeyClearTask = settingsKeyClearTask;
         this.watchNext = watchNext;
+        this.watchNextLayout = watchNextLayout(watchNextLayout);
         this.libraryButton = libraryButton;
         this.showLibraryPill = showLibraryPill;
         this.wifiLabelWidth = wifiLabelWidth;
@@ -496,6 +499,7 @@ final class Config {
         String greetingName = res.getString(R.string.greeting_name).trim();
         String greetingText = res.getString(R.string.greeting_text).trim();
         boolean moduleCards = res.getBoolean(R.bool.module_cards);
+        String watchNextLayout = res.getString(R.string.watch_next_layout);
         boolean watchNext = res.getBoolean(R.bool.watch_next);   // ---- continue watching (fork) ----
         boolean reducedMotion = res.getBoolean(R.bool.reduced_motion);
         boolean bootToLiveTv = res.getBoolean(R.bool.boot_to_live_tv);
@@ -619,6 +623,7 @@ final class Config {
             greetingName = string(json, "greeting_name", greetingName).trim();
             greetingText = string(json, "greeting_text", greetingText).trim();
             moduleCards = bool(json, "module_cards", moduleCards);
+            watchNextLayout = string(json, WATCH_NEXT_LAYOUT_KEY, watchNextLayout);
             watchNext = bool(json, "watch_next", watchNext);   // ---- continue watching (fork) ----
             reducedMotion = bool(json, "reduced_motion", reducedMotion);
             bootToLiveTv = bool(json, "boot_to_live_tv", bootToLiveTv);
@@ -715,6 +720,7 @@ final class Config {
         SharedPreferences choices = ctx.getSharedPreferences(SETTINGS_NAME, Context.MODE_PRIVATE);
         // Unmounted storage looks like a theme reset; compare only once the file is readable.
         if (mounted) syncThemeChoices(choices, dir, file);
+        watchNextLayout = choices.getString(WATCH_NEXT_LAYOUT_KEY, watchNextLayout);
         int chosenColumns = choices.getInt("columns", columns);
         if (chosenColumns >= 4 && chosenColumns <= 7) columns = chosenColumns;
         int chosenRows = choices.getInt(ROWS_BELOW_DOCK_KEY, rowsBelow);
@@ -772,7 +778,7 @@ final class Config {
                 dateBelowClock, hideDate, vpnPill, locale, powerOnHomeAlways, inputsConnectedOnly, inputsCecStateOnly,
                 Math.max(0, Math.min(600, openOnStartNetworkWait)), openOnStartOnWake, iconOnlyVpn, clockFormat, backOpensClock, glowSnap,
                 settingsKeyClearTask,
-                watchNext, popupStyle, dockStyle, sidebarHeader);
+                watchNext, popupStyle, dockStyle, sidebarHeader, watchNextLayout);
     }
 
     /**
@@ -805,6 +811,11 @@ final class Config {
         return races;
     }
 
+    static String watchNextLayout(String value) {
+        String layout = value == null ? "compact" : value.trim().toLowerCase(java.util.Locale.ROOT);
+        return "two".equals(layout) || "three".equals(layout) ? layout : "compact";
+    }
+
     private static void syncThemeChoices(SharedPreferences choices, File dir, File config) {
         File revision = dir == null ? null : new File(dir, THEME_REVISION_NAME);
         String token = revisionToken(revision);
@@ -816,12 +827,12 @@ final class Config {
             SharedPreferences.Editor editor = choices.edit();
             if (!"absent".equals(token)) editor.remove("columns").remove("animations")
                     .remove("advanced_effects").remove(ROWS_BELOW_DOCK_KEY).remove(WALLPAPER_CHOICE_KEY)
-                    .remove(DOCK_OPACITY_KEY).remove(CLOCK_FORMAT_KEY);
+                    .remove(DOCK_OPACITY_KEY).remove(CLOCK_FORMAT_KEY).remove(WATCH_NEXT_LAYOUT_KEY);
             editor.putString(THEME_SIGNATURE_KEY, signature).commit();
         } else if (!seen.equals(signature)) {
             choices.edit().remove("columns").remove("animations").remove("advanced_effects")
                     .remove(ROWS_BELOW_DOCK_KEY).remove(WALLPAPER_CHOICE_KEY).remove(DOCK_OPACITY_KEY)
-                    .remove(CLOCK_FORMAT_KEY).putString(THEME_SIGNATURE_KEY, signature).commit();
+                    .remove(CLOCK_FORMAT_KEY).remove(WATCH_NEXT_LAYOUT_KEY).putString(THEME_SIGNATURE_KEY, signature).commit();
         }
     }
 

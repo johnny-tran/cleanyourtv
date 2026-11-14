@@ -32,11 +32,18 @@ final class TileFocus {
     static void animate(View view, ImageView banner, TextView name, boolean focused, boolean animations,
                         boolean advancedEffects, boolean reducedMotion, float restNameAlpha,
                         boolean overshoot, boolean inDock, String style) {
+        animate(view, banner, name, focused, animations, advancedEffects, reducedMotion, restNameAlpha,
+                overshoot, inDock, style, scale(animations, advancedEffects, style));
+    }
+
+    static void animate(View view, ImageView banner, TextView name, boolean focused, boolean animations,
+                        boolean advancedEffects, boolean reducedMotion, float restNameAlpha,
+                        boolean overshoot, boolean inDock, String style, float requestedScale) {
         float density = view.getResources().getDisplayMetrics().density;
         view.animate().cancel();
         banner.animate().cancel();
         name.animate().cancel();
-        float scale = scale(animations, advancedEffects, style);
+        float scale = animations ? requestedScale : 1f;
         float s = focused ? scale : 1f;
         if (Config.GLASS_LIFT.equals(style))
             TileShadow.animate(view, focused, animations, reducedMotion, scale);

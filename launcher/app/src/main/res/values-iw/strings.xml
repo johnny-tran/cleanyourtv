@@ -157,4 +157,9 @@
     <string name="watch_next_save_failed">לא ניתן לשמור שינויים בהמשך צפייה.</string>
     <string name="system_settings">הגדרות מערכת</string>
     <string name="sidebar_app_library">ספריית אפליקציות</string>
+    <string name="continue_watching">לצפייה הבאה</string>
+    <string name="watch_layout_label">פריסת הצפייה הבאה</string>
+    <string name="watch_layout_two">שני כרטיסים גדולים</string>
+    <string name="watch_layout_three">שלושה כרטיסים גדולים</string>
+    <string name="watch_layout_compact">קומפקטית</string>
 </resources>

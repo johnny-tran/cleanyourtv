@@ -88,11 +88,14 @@ final class WatchNext {
         String season = str(c, "season_display_number");
         String episode = str(c, "episode_display_number");
         String epTitle = str(c, "episode_title");
-        StringBuilder sub = new StringBuilder();
-        if (season != null) sub.append('S').append(season);
-        if (episode != null) sub.append(sub.length() > 0 ? " " : "").append('E').append(episode);
-        if (epTitle != null) sub.append(sub.length() > 0 ? " \u00b7 " : "").append(epTitle);
-        return sub.length() > 0 ? sub.toString() : null;
+        return episodeLabel(season, episode, epTitle);
+    }
+
+    static String episodeLabel(String season, String episode, String title) {
+        String numbers = (season == null ? "" : "S" + season)
+                + (episode == null ? "" : (season == null ? "" : " ") + "E" + episode);
+        if (title == null || title.trim().isEmpty()) return numbers.isEmpty() ? null : numbers;
+        return numbers.isEmpty() ? title : numbers + " \u00b7 " + title;
     }
 
     private static String str(Cursor c, String col) {

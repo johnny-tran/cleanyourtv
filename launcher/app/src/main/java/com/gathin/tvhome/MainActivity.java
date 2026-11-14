@@ -2019,7 +2019,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         boolean coloured = TileFocus.coloured(appGlow, cinematic, cinematicWhiteFocus, false, festive);
         ImageView poster = card.findViewById(R.id.poster);
-        showTileGlass(card, adapter.focusScale(), advancedEffects,
+        showTileGlass(card, watchNextRow.focusScale(), watchNextRow.focusAdvancedEffects(),
                 coloured ? AppAdapter.vividColor(poster.getDrawable()) : 0);
     }
 

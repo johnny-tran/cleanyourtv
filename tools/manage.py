@@ -475,6 +475,7 @@ ENUMS = {
     "glow_style": (("radial", "horizon"), "radial", True),
     "glass_style": (("glass", "rim", "halo", "lift", "zoom"), "glass", True),
     "dock_style": (("classic", "dark"), "classic", True),
+    "watch_next_layout": (("compact", "two", "three"), "compact", True),
     "popup_style": (("classic", "glass"), "glass", True),
     "clock_format": (("12", "24", "system"), "system", True),
     "wallpaper_order": (("shuffle", "sequential"), "shuffle", False),

@@ -34,6 +34,9 @@ public final class LauncherSettingsActivity extends Activity {
     private final TextView[] dockChoices = new TextView[DOCK_OPACITIES.length];
     private static final String[] CLOCK_FORMATS = {"system", "12", "24"};
     private final TextView[] clockChoices = new TextView[CLOCK_FORMATS.length];
+    private static final String[] WATCH_LAYOUTS = {"two", "three", "compact"};
+    private final TextView[] watchLayoutChoices = new TextView[3];
+    private String watchLayout;
     private TextView wallpaperChoice;
     private TextView animationsChoice;
     private TextView advancedChoice;
@@ -59,6 +62,20 @@ public final class LauncherSettingsActivity extends Activity {
             setResult(RESULT_OK, new Intent().putExtra(EXTRA_REORDER, true));
             finish();
         });
+        watchLayout = config.watchNextLayout;
+        findViewById(R.id.watchLayoutOptions).setVisibility(config.watchNext ? View.VISIBLE : View.GONE);
+        int[] watchIds = {R.id.watchLayoutTwo, R.id.watchLayoutThree, R.id.watchLayoutCompact};
+        for (int i = 0; i < watchIds.length; i++) {
+            final String value = WATCH_LAYOUTS[i];
+            watchLayoutChoices[i] = findViewById(watchIds[i]);
+            watchLayoutChoices[i].setOnClickListener(v -> {
+                if (value.equals(watchLayout)) return;
+                watchLayout = value;
+                choices.edit().putString(Config.WATCH_NEXT_LAYOUT_KEY, value).apply();
+                changed();
+                refresh();
+            });
+        }
         columns = config.columns;
         rowsBelowDock = config.rowsBelowDock;
         dockOpacity = config.dockOpacity;
@@ -123,6 +140,7 @@ public final class LauncherSettingsActivity extends Activity {
             reverseRow(rowChoices);
             reverseRow(dockChoices);
             reverseRow(clockChoices);
+            reverseRow(watchLayoutChoices);
         }
         wallpaperChoice = findViewById(R.id.wallpaperChoice);
         wallpaperChoice.setOnClickListener(v -> showWallpaperPicker());
@@ -158,8 +176,10 @@ public final class LauncherSettingsActivity extends Activity {
             if (!hasOnTvChoices()) return;
             choices.edit().remove("columns").remove(Config.ROWS_BELOW_DOCK_KEY).remove("animations")
                     .remove("advanced_effects").remove(Config.WALLPAPER_CHOICE_KEY)
-                    .remove(Config.DOCK_OPACITY_KEY).remove(Config.CLOCK_FORMAT_KEY).remove(OpenOnStart.KEY).commit();
+                    .remove(Config.DOCK_OPACITY_KEY).remove(Config.CLOCK_FORMAT_KEY).remove(Config.WATCH_NEXT_LAYOUT_KEY)
+                    .remove(OpenOnStart.KEY).commit();
             Config current = Config.load(this);
+            watchLayout = current.watchNextLayout;
             columns = current.columns;
             rowsBelowDock = current.rowsBelowDock;
             dockOpacity = current.dockOpacity;
@@ -294,6 +314,9 @@ public final class LauncherSettingsActivity extends Activity {
     }
 
     private void refresh() {
+        for (int i = 0; i < watchLayoutChoices.length; i++) {
+            watchLayoutChoices[i].setSelected(WATCH_LAYOUTS[i].equals(watchLayout));
+        }
         for (int i = 0; i < columnChoices.length; i++) {
             columnChoices[i].setSelected(columns == i + 4);
         }
@@ -322,7 +345,7 @@ public final class LauncherSettingsActivity extends Activity {
     }
 
     private boolean hasOnTvChoices() {
-        return choices.contains("columns") || choices.contains(Config.ROWS_BELOW_DOCK_KEY)
+        return choices.contains(Config.WATCH_NEXT_LAYOUT_KEY) || choices.contains("columns") || choices.contains(Config.ROWS_BELOW_DOCK_KEY)
                 || choices.contains("animations") || choices.contains("advanced_effects")
                 || choices.contains(Config.WALLPAPER_CHOICE_KEY) || choices.contains(Config.DOCK_OPACITY_KEY)
                 || choices.contains(Config.CLOCK_FORMAT_KEY) || choices.contains(OpenOnStart.KEY);
