@@ -949,6 +949,7 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                 }
             });
             card.setClipToOutline(true);
+            TileShadow.prepare(card, focusStyle);
             if (darkDock) card.animate().setUpdateListener(animation -> {
                 // Property-only tile zoom must redraw the dock decoration too, without relayout.
                 if (v.getParent() instanceof View) ((View) v.getParent()).invalidate();

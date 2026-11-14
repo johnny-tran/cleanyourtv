@@ -459,7 +459,17 @@ size for its scale ratio, so opening does not shrink or enlarge the photo. The S
 profile padding and overall container spacing stay unchanged. The updated closed-control geometry
 was read through Figma Console after the official MCP hit its plan limit.
 
-### Private prototype typography
+### Tile radiosity and one private font
+
+`TileShadow.java` now installs a cached, half-resolution neutral-gray radiosity layer at rest for
+`lift` tiles, both apps (`AppAdapter.java`) and Continue Watching (`WatchNextRow.java`). It uses the
+owner-confirmed Figma Radiosity values: #3A3A3C at 50% opacity, 11px downwards offset and 27px layer blur
+at a 250px tile width. The blurred layer has the same width and height as the card, with measurements
+scaled with the tile. It fades into the existing focused shadow. No blur runs during navigation;
+empty slots draw neither shadow. These supplied values replace the earlier estimated neutral-gray fill.
+`TileShadowTest.java`
+checks the Figma-to-Skia blur conversion and size scaling. The prior focused-only mask cleanup above
+is superseded: this background remains installed to draw the resting radiosity.
 
 `UiFont.java` caches the private `header-assets/sf_medium.ttf` and applies it to text without altering
 sizes, colors or spacing. `HomeHeader.java` uses it for greeting, clocks and sidebar labels, dropping
@@ -469,6 +479,12 @@ the separate bold and Rounded files. XML text is covered at inflation in `MainAc
 uses the same `UiFont.get` path. Continue Watching's heading retains its size and color. Without the
 private font file, bundled theme/locale typography is preserved. Font changes take effect on process
 restart, and no proprietary font is included in the repository or APK.
+
+Validation: 361 JVM tests, release lint and assembly pass (614,445-byte APK); fork documentation
+checks and whitespace checks pass. Installed on the Sony Android TV 12; private screenshots cover
+resting/selected dock tiles, Continue Watching, clock focus and sidebar. Injected navigation preserved
+the launcher process, and the TV was returned to sleep. Physical-remote acceptance and performance benchmarking remain unverified. The owner subsequently
+supplied the exact Radiosity color, opacity, dimensions, offset and blur used above.
 
 `styles.xml` gives the Continue watching caption normal (0em) tracking to match the greeting and
 removes forced uppercase, using the existing sentence-case string. Its size and color stay unchanged.

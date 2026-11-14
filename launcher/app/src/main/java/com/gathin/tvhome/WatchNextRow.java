@@ -149,6 +149,7 @@ final class WatchNextRow {
         TextView name = v.findViewById(R.id.name);
         sizePoster(v);
         roundCorners(card);
+        TileShadow.prepare(card, cfg.glassStyle);
         card.setContentDescription(item.title);
         fallback.setText(item.title);
         name.setText(item.title);
