@@ -76,6 +76,7 @@ final class ClockScene {
 
     /** root is the inflated dream_clock layout. */
     ClockScene(View root) {
+        UiFont.apply(root);
         content = root.findViewById(R.id.dreamContent);
         clockRefresh = new ClockRefresh(content);
         ambient = root.findViewById(R.id.dreamAmbient);

@@ -48,6 +48,7 @@ else comes from upstream untouched, so all of upstream's new features arrive wit
 ## What the feature touches (this is the rebase surface; keep it short)
 
 New files (cannot conflict):
+- `launcher/app/src/main/java/com/gathin/tvhome/SidebarButtonMaterial.java` — cached sidebar button fills, focused blend and shared inset lighting from Figma.
 - `launcher/app/src/main/java/com/gathin/tvhome/PopupMaterial.java` — a one-shot blurred Home backdrop with dark tint for popup menus.
 - `launcher/app/src/main/java/com/gathin/tvhome/PopupPlacement.java` — keeps dropdown menus at least 24dp inside the viewport while preserving anchor alignment when it fits; accounts for focus zoom to keep a consistent 10dp tile-to-menu gap.
 - `launcher/app/src/main/java/com/gathin/tvhome/WatchNext.java` — the Watch Next provider query.
@@ -77,6 +78,7 @@ Edited files, each marked with a `continue watching (fork)` comment where possib
 - `launcher/app/src/main/java/com/gathin/tvhome/MainActivity.java` — build the row, refresh it in
   `onResume`, lay it above the dock, route the D-pad in and out; park the compact dock with a 16dp next-row peek.
 - `launcher/app/src/main/res/layout/activity_main.xml` — the row's container.
+- `launcher/app/src/main/res/values-iw/strings.xml` — Hebrew labels for the sidebar, Watch Next layouts and cursor sound control.
 - `launcher/app/src/main/res/values/strings.xml`, `styles.xml` — the header string, its `Caption` style and shared `TileName` style.
 - `themes/README.md`, `docs/switches.md` — the `watch_next` key's rows, which the repository's own tests
   require of any new key.
@@ -340,3 +342,219 @@ padding, so the shared radius change reaches them too.
 Verified on the Sony BRAVIA (Android TV 12) with `dock_style=dark`, `glass_style=lift` and
 `popup_style=glass`: pixel scans of a Home capture show the band's 2px lighter top edge and the panel's
 inner stroke; the tile menu shows pill rows inside a concentric panel.
+
+## Compact header and sidebar
+
+`sidebar_header=true` opts into the Figma greeting, clock/avatar pill and three-action sidebar
+(Inputs, App Library, Settings). The default is false. `HomeHeader.java` builds the views, keeps
+D-pad focus within the sidebar, restores the pill on dismissal, and routes to the existing actions.
+Holding the pill or Settings opens the existing launcher menu. The old header retains its measured
+space so the dock and Continue Watching geometry stay unchanged. `MainActivity.java`, `Config.java`,
+`res/values/config.xml`, `themes/README.md` and `docs/switches.md` wire and document the switch.
+`PopupMaterial.java` accepts a caller-supplied radius so the pill and sidebar share its cached blur
+without changing other menus. Private prototype SF fonts, symbol PNGs and the avatar photo live in
+`header-assets/` beside the TV config, never in Git or the APK. Missing files use bundled fonts/icons.
+Replace `header-assets/avatar.png` with a square photo and reload the launcher to update both avatar
+views. They center-crop the source and clip to a 25dp circle (50px at the 1080p design density);
+the image needs no baked mask. The closed and open 32dp layout boxes retain centered 3.5dp insets,
+and the morph scales by visible content size so the photo stays the same size throughout.
+
+The sidebar build passes 352 JVM tests, release lint (zero errors) and release assembly.
+Targeted Python checks cover shipped config values, switch documentation and this fork map.
+On the Sony Android TV 12, injected D-pad checks open each action, traverse all sidebar rows,
+stop at the edges and return from App Library to the clock pill. The clock pill remains in
+Home's focus tree while transparent behind the sidebar, avoiding focus moving to posters.
+Private screenshots verify the circular avatar, sidebar bounds and unchanged dock geometry.
+Physical remote acceptance, accessibility-reader output and a performance benchmark remain unchecked.
+
+The sidebar morphs from the focused clock/avatar pill over 420ms. Its surface bounds and corner
+radius interpolate, the clock translates left, the profile name reveals from behind the avatar,
+and the clipped menu rows fade in as the surface grows vertically. The avatar's center is anchored
+to the closed pill; text is never scaled. Back/outside clicks reverse the same geometry, and menu
+actions wait until closing completes before opening the existing destination. Reduced motion or
+animations disabled uses the final state immediately. `HomeHeaderTest.java` covers traversal and
+bounded interpolation; `PopupMaterial.java` updates its radius without another backdrop capture.
+The morph build passes 353 JVM tests, release lint and assembly (609,961-byte APK). Installed on
+Sony Android TV 12; injected navigation verifies opening, reverse closing, App Library after closing,
+and focus restoration. Private `work/sidebar-morph-demo.mp4` records two cycles and all three focus
+states. Sequentially decoded video frames confirm the shrinking surface and anchored avatar during
+closing; sparse frame-seeking previews were unreliable. TV returned to standby after capture.
+Physical remote feel, accessibility-reader output and performance benchmarking remain unchecked.
+
+The clock-to-sidebar handoff keeps the focused pill visible until the morph surface is initialized,
+then swaps both in the same frame. Its cached glass backdrop sits behind a native focus/activated
+state selector, so a late capture cannot replace the focused white fill. Closing redraws the matching
+pill underneath before removing the popup window. This avoids exposing wallpaper between surfaces;
+it is not a pressed-state color effect. Sidebar backdrop capture waits for the pill's hidden frame.
+Handoff validation: release build/lint and 353 JVM tests pass (610,673-byte APK). The earlier TV video
+had five decoded frames without the avatar across two openings. The corrected two-cycle recording
+has zero missing-avatar frames across all 86 decoded frames, including closing. Private video and
+assert-based continuity checker remain in `work/`; TV standby was confirmed after recording.
+
+The focus-white fill and clock ink reach the dark-glass/white-text state in the first 90ms of
+the 420ms opening; closing mirrors that fade in its final 90ms. `HomeHeader.materialProgress` shares
+a smooth material phase between fill and ink, independent of geometry easing. Interrupted transitions
+retain their current color and shorten the fade to fit. There is no new setting or change to expansion timing.
+Faster-material validation: release build/lint and 354 JVM tests pass (610,681-byte APK).
+Installed on Sony Android TV 12 and recorded two open/close cycles in private
+`work/sidebar-fast-material.mp4`; sequential video frames show dark material before expansion
+finishes. The continuity checker reports zero missing-avatar frames across all 80 decoded frames.
+TV standby confirmed after recording; physical-remote feel remains unchecked.
+
+The clock pill retains its cached blurred backdrop and inner stroke on focus; only its tint changes
+from 41% black to 80% white, with black clock ink. `PopupMaterial.java` opts just this material into
+focused/activated tint states; other popup materials keep their existing dark tint. The sidebar morph
+interpolates that same tint and clock ink during the existing symmetric 90ms material phase, rather
+than covering the blur and stroke with an opaque white foreground. Classic/capture-failure fallbacks
+use the matching translucent white fill with their existing shape and stroke.
+
+Sidebar buttons now share Figma BG's fill/edge/shadow stack instead of switching between flat fills.
+`SidebarButtonMaterial.java` caches both states from the sidebar's existing Home blur: additive
+`#101010`, a 4% neutral luminosity lift, and three inset lighting masks (design offsets ±40px,
+blur radii 10/30px, spread -40px). Focus adds `#6F6F6F` Color Dodge and 65% white Screen below
+that same lighting. Fine burn edges and the 2% drop shadow remain in both states. `HomeHeader.java`
+installs one stateful background per button; `PopupMaterial.java` samples the final row positions
+from its existing snapshot. Focus moves only select cached bitmaps, with no new capture or blur.
+The native Figma GLASS refraction/dispersion and its Gaussian masks are approximated with the cached
+blur and smooth distance masks; this is not an exact implementation of Figma's optical shader.
+The 4% white luminosity blend uses a neutral channel lift. Dock, popovers, clock-pill styling,
+geometry and navigation are unchanged.
+
+Button-depth validation: 359 JVM tests, release lint and assembly pass. Targeted fork-map checks
+and `git diff --check` pass. A private Sony Android TV 12 capture verifies focused Inputs alongside
+unfocused App Library/Settings with shared inset shading. The TV returned to standby afterward.
+Optical refraction parity, physical-remote acceptance and performance benchmarking remain unchecked.
+
+## Sidebar Glass container trial and tighter spacing
+
+The Sidebar (Glass) Figma frame `12435:32762` tightens `HomeHeader.java`: equal top/right
+13.5dp margins, User Profile vertical padding 11dp, Sidebar Items top padding 0 and bottom 6.5dp.
+Width, horizontal padding, button sizes/gaps and corner radius stay unchanged. The 5dp downward
+container move cancels the 5dp reduction in profile top padding, retaining the avatar's vertical
+center and the existing anchored open/close morph.
+
+The container trial opts only its `PopupMaterial.java` instance into cached inset top/bottom light,
+broad top shade, a fine burn edge and a 4% soft outer shadow. It reuses
+`SidebarButtonMaterial.insetCoverage` with the container's 24dp corner instead of a pill radius.
+Lighting appears with the symmetric material fade and the focused closed pill stays unchanged.
+Buttons sample this shaded container behind their own glass layers. The shared Home blur and
+41% black tint stay in place; Figma's luminosity blend/refraction remain approximations.
+The extra lighting/shadow masks are cached once per opening, never blurred per animation frame.
+Dock and other popup materials are unaffected. The glass trial is independent of the spacing edits,
+so reverting the material does not require reverting the tighter layout.
+
+Container-trial validation: release build/lint and 360 JVM tests pass. On Sony Android TV 12,
+private captures check clock focus, focused Inputs/App Library, tighter container bounds and reverse
+close back to the same clock pill. The launcher process stays unchanged across that sequence and
+standby is confirmed afterward. The first native check caught an immutable-lighting-bitmap crash;
+the lighting bitmap is now mutable. The outer shadow contains no opaque face and uses current
+surface bounds before its first draw, avoiding a first-opening shadow artifact. Refraction parity,
+physical remote feel and performance benchmarking remain unchecked.
+
+The updated Avatar Menu uses a 32dp avatar box with a 25dp photo (64/50px at the design density)
+and 0.5dp outer pill padding at top/right/bottom. The photo thus has 4dp visible clearance to the
+pill edge, matching Figma. The old closed box was 29dp with 2dp outer padding: changing both together
+preserves the avatar center. The sidebar uses the same 25dp visible circle; the morph uses content
+size for its scale ratio, so opening does not shrink or enlarge the photo. The Sidebar (Glass)
+profile padding and overall container spacing stay unchanged. The updated closed-control geometry
+was read through Figma Console after the official MCP hit its plan limit.
+
+### Private prototype typography
+
+`UiFont.java` caches the private `header-assets/sf_medium.ttf` and applies it to text without altering
+sizes, colors or spacing. `HomeHeader.java` uses it for greeting, clocks and sidebar labels, dropping
+the separate bold and Rounded files. XML text is covered at inflation in `MainActivity.java`,
+`AppAdapter.java`, `WatchNextRow.java`, `AppLibraryDialog.java` and `QuickSettingsActivity.java`, plus
+`LauncherSettingsActivity.java` and both screensavers through `ClockScene.java`. Programmatic text
+uses the same `UiFont.get` path. Continue Watching's heading retains its size and color. Without the
+private font file, bundled theme/locale typography is preserved. Font changes take effect on process
+restart, and no proprietary font is included in the repository or APK.
+
+`styles.xml` gives the Continue watching caption normal (0em) tracking to match the greeting and
+removes forced uppercase, using the existing sentence-case string. Its size and color stay unchanged.
+
+The caption now also matches the greeting at 15sp, with white opacity increased from approximately
+55% to 70% (`#B3FFFFFF`). Its sentence case, font and normal tracking are unchanged.
+
+The visible English shelf heading is now “Watch Next” (`strings.xml`, existing `continue_watching` key).
+This is a label change only; data sources, sorting, dismissal actions and card layout are unchanged.
+
+### Sidebar opening work off the UI thread
+
+`PopupMaterial.java` now runs captured-backdrop blur and sidebar lighting masks on one shared
+`TVHomeGlass` worker. `SidebarButtonMaterial.java` uses that same worker for its normal/focused
+bitmaps, with a private drawing paint per bake. `HomeHeader.java` samples the buttons only after the
+container lighting is ready. View coordinates, geometry, state changes and final bitmap publication
+stay on the UI thread; detached panels and superseded button sizes discard unfinished results.
+The glass formulas, resolution, 420ms morph and symmetric 90ms material phase are unchanged.
+Other glass popovers also use the background blur worker. `PopupRenderTest.java` checks that material
+jobs leave their caller and use one worker rather than starting a thread per bitmap.
+
+Opening-performance validation: release build, zero-error lint and 365 JVM tests pass (618,669-byte
+APK), including the worker check. Five identical injected sidebar open/close traces on Sony Android
+TV 12 recorded median per-run p90 frame time 44.34ms before versus 13.84ms after warm-up. The median
+worst main-thread draw fell from 66.96ms to 5.61ms; median worst frame from 188.90ms to 40.99ms.
+Frames over 33.4ms per run fell from five to one. All five measured runs are retained in ignored
+`work/`, along with a representative peak-draw-median flame chart. A separate immediate-after-install
+batch was noisy (p90 16.03–147.96ms across its five runs); it is retained too. These are short warm
+sidebar samples, not a cold-start or whole-launcher performance guarantee. Physical remote feel
+still needs the owner's check.
+TV checks confirm the settled glass appearance, all three focused sidebar rows, an early close
+100ms after opening, a subsequent reopen, and the App Library action returning focus to the clock.
+No launcher crashes were logged. Home remains on screen; the TV was already awake when testing began.
+
+The owner’s latest menu-pill trial lowers its focused white tint to 60% (`0x99FFFFFF`),
+including activated/fallback states and both sidebar morph endpoints. Blur, stroke, button
+lighting and animation timing are unchanged. `HomeHeaderTest.java` uses the matching tint.
+
+### Stable sidebar button fills during expansion
+
+`HomeHeader.java` waits for all three final button materials before revealing the row group.
+The buttons then remain fully opaque: the existing growing/shrinking container clip reveals them,
+so the focused fill no longer fades through gray. `SidebarButtonMaterial.java` reports completion
+only after publishing the current-size normal/focused images, skips the unused initial placeholder
+bake, and prepares hidden buttons from their measured view sizes. Its inset-distance calculation
+uses the equivalent square root for screen-sized coordinates instead of the slower robust hypotenuse.
+`PopupMaterial.java` supplies an explicit Classic/capture-failure fallback, keeping buttons available
+when glass cannot be captured. Superseded/detached jobs still discard their results. The 60% focused
+clock tint, final button styling, expansion geometry and material timing are unchanged.
+`HomeHeaderTest.java` checks hidden-until-ready and full-opacity-throughout-expansion behavior.
+The container/button lighting shapes are prewarmed on the material worker when the header is created.
+`SidebarButtonMaterial.java` retains only two geometry-keyed masks (about 1.3MB combined at 1080p),
+shared by all three button bakes and the container, avoiding repeated inset-distance calculations
+while opening. A changed size, corner or density gets a new mask; old geometries are evicted.
+`SidebarButtonMaterialTest.java` covers reuse, geometry keys and bounded retention.
+The first-opening recording exposed a late material arrival even with cached masks. Expansion now
+starts only after all final button images are published, keeping the clock-shaped header in place
+during preparation. This trades a short preparation wait before opening for stable fills throughout
+the morph; no empty expanded container or replacement fill is shown. Reduced motion takes the final
+state once ready, and Back can still dismiss the pending opening. Closing keeps the existing timing.
+Validation: release build, zero-error lint and 367 JVM tests pass (619,557-byte APK), plus fork-map
+and whitespace checks. Installed on Sony Android TV 12. A frame-by-frame native recording confirms
+stable full-opacity button fills as the container reveals them, with no placeholder replacement or
+empty expanded panel. The recorded first opening waits roughly 0.4s in its clock-shaped state before
+expanding; this preparation latency remains a known tradeoff, not a performance improvement claim.
+Injected checks cover Back during preparation, reopening, all rows and App Library return; no launcher
+crashes were logged. Home is left visible. Physical-remote feel and forced capture-failure testing
+remain unverified.
+
+### Sidebar sizing from the updated focus variants
+
+`HomeHeader.java` matches all three revised Figma states with a 440x413px panel, 416x84px buttons,
+20px row gaps, 12px side/13px bottom padding around the list, and the existing 108px profile area.
+Button text is 30px SF Pro Medium, icons occupy 48px boxes, icon/text gap is 16px, and row left
+padding is 21px. The profile name is now 25px like the clock; the 50px avatar, profile insets and
+avatar screen anchor remain unchanged. Worker prewarming uses the new geometry. `strings.xml`
+adds sidebar-only App Library and System Settings labels, leaving other Settings labels alone.
+Normal/focused symbols were exported directly from the corresponding Figma text layers to private
+`header-assets` PNGs, including the new four-square App Library icon. The prototype assets remain
+outside the APK and repository, with the existing bundled icon fallbacks if absent. Material formulas,
+focus fills, opening/closing timing and actions are unchanged.
+Validation: release assembly, zero-error lint, all 367 JVM tests, fork-map checks and whitespace
+checks pass (620,485-byte APK). Installed on Sony Android TV 12. TV captures verify both large-card
+layouts, their focus episode reveal, and all three sidebar focus states. UI hierarchy assertions
+confirm exact panel/button bounds and spacing; all six icon exports retain their 48px design boxes
+at 2x resolution. Three-card layout is restored. The TV entered sleep during the final App Library
+action check, so that action and performance sampling were not completed in this pass; no changes
+to those action handlers were made. Sleep was explicitly requested and confirmed with
+`mWakefulness=Asleep`. Physical-remote feel and enlarged accessibility fonts remain unverified.

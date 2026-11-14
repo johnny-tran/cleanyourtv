@@ -141,6 +141,7 @@ final class WatchNextRow {
 
     private View card(WatchNext.Item item, int index) {
         View v = LayoutInflater.from(container.getContext()).inflate(R.layout.item_watch, row, false);
+        UiFont.apply(v);
         View card = v.findViewById(R.id.watch_card);
         card.setTag(item);
         ImageView poster = v.findViewById(R.id.poster);

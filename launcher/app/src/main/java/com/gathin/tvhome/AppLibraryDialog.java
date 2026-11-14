@@ -554,6 +554,7 @@ final class AppLibraryDialog {
         String pkg = selectedPackage;
         if (spring != null) spring.cancel();
         View menuPanel = activity.getLayoutInflater().inflate(R.layout.popup_inputs, panel, false);
+        UiFont.apply(menuPanel);
         LinearLayout rows = menuPanel.findViewById(R.id.rows);
         PopupMaterial.apply(activity.getWindow(), activity.getWindow().getDecorView(), menuPanel, popupStyle);
         PopupWindow menu = new PopupWindow(menuPanel, dp(220), ViewGroup.LayoutParams.WRAP_CONTENT, true);
@@ -609,6 +610,7 @@ final class AppLibraryDialog {
 
     private void addAction(LinearLayout rows, int label, Runnable action) {
         View row = activity.getLayoutInflater().inflate(R.layout.item_input, rows, false);
+        UiFont.apply(row);
         ((TextView) row.findViewById(R.id.title)).setText(label);
         row.setFocusableInTouchMode(true);
         row.findViewById(R.id.icon).setVisibility(View.GONE);

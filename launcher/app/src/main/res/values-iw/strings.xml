@@ -155,4 +155,6 @@
     <string name="watch_next_remove">הסרה מהמשך צפייה</string>
     <string name="watch_next_restore">שחזור המשך צפייה</string>
     <string name="watch_next_save_failed">לא ניתן לשמור שינויים בהמשך צפייה.</string>
+    <string name="system_settings">הגדרות מערכת</string>
+    <string name="sidebar_app_library">ספריית אפליקציות</string>
 </resources>

@@ -27,6 +27,7 @@ rule sit on its wanted list until a screenshot arrives.
 | Key | Screenshot |
 |---|---|
 | `columns` | <img src="../themes/six-columns/screenshot.jpg" width="320" alt="columns on a TV"> |
+| `sidebar_header` | <img src="../themes/six-columns/screenshot.jpg" width="320" alt="sidebar_header false: the original header remains the default"> |
 | `dock_style` | <img src="../themes/six-columns/screenshot.jpg" width="320" alt="dock_style classic: original six-column layout on a TV"> |
 | `popup_style` | <img src="switches/library_excluded_apps.png" width="320" alt="popup_style classic: original App Library panel on a TV"> |
 | `glass_style` | <img src="switches/glass_style.jpg" width="320" alt="glass_style halo on a TV"> |

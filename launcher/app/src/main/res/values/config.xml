@@ -571,6 +571,8 @@
          A theme can set "popup_style"; glass preserves the fork's existing appearance. -->
     <string name="popup_style" translatable="false">glass</string>
     <!-- Fork: dark opts into the Figma dock geometry and dark blurred material; classic preserves stock. -->
+    <!-- Fork: compact greeting, clock/avatar pill and three-action sidebar. -->
+    <bool name="sidebar_header">false</bool>
     <string name="dock_style" translatable="false">classic</string>
 
     <!-- Tiles drawn from the app's icon and name instead of its banner (for banners that crop badly). -->

@@ -188,6 +188,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private boolean advancedEffects;
     private TextView greeting;
     private View clockBlock;
+    private HomeHeader homeHeader;
     private View btnInputs;
     /** config show_inputs_pill: false keeps the Inputs pill hidden even when the TV has inputs. */
     private boolean showInputsPill = true;
@@ -467,6 +468,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        UiFont.apply(getWindow().getDecorView());
         density = getResources().getDisplayMetrics().density;
         // config.xml, overlaid by config.json from a pushed theme (see Config and tools/theme.sh).
         Config cfg = Config.load(this);
@@ -1012,6 +1014,18 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         if (festive) applyFestiveSkin((TextView) btnInputs, (TextView) btnSettings);
 
+        // continue watching (fork): the old header retains its layout space so dock geometry stays unchanged.
+        if (cfg.sidebarHeader) {
+            homeHeader = new HomeHeader(this, (FrameLayout) root, cfg, popup -> openPopup = popup,
+                    this::showInputs,
+                    () -> { onLibraryRequested(); libraryFromTopBar = true; },
+                    () -> open(systemIntent(Settings.ACTION_SETTINGS)), this::showSettingsMenu);
+            homeHeader.pill.setOnKeyListener(pillKeys);
+            btnInputs.setVisibility(View.GONE);
+            findViewById(R.id.topButtons).setVisibility(View.GONE);
+            clockBlock.setVisibility(View.INVISIBLE);
+        }
+
         // Hide the glass when focus leaves the tiles.
         getWindow().getDecorView().getViewTreeObserver().addOnGlobalFocusChangeListener((oldF, newF) -> {
             boolean onTile = newF != null && (newF.getId() == R.id.card || newF.getId() == R.id.watch_card);
@@ -1077,7 +1091,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private boolean openInputsIfAsked(Intent intent) {
         if (intent == null || !ACTION_VIEW_INPUTS.equals(intent.getAction())) return false;
         setIntent(new Intent(Intent.ACTION_MAIN));
-        View anchor = topMenu ? findViewById(R.id.btnSettings) : btnInputs;
+        View anchor = homeHeader != null ? homeHeader.pill : topMenu ? findViewById(R.id.btnSettings) : btnInputs;
         if (anchor.getVisibility() != View.VISIBLE) return true;
         if (anchor.isLaidOut()) {
             // Android 9 delivers a new intent to a paused activity with a brief resume and pause around it, and
@@ -1872,7 +1886,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             openPopup = null;
             if (libraryFromTopBar) {
                 libraryFromTopBar = false;
-                btnLibraryTop.requestFocus();
+                (homeHeader != null ? homeHeader.pill : btnLibraryTop).requestFocus();
                 return;
             }
             boolean fromVpnPill = libraryFromVpnPill;
@@ -2715,6 +2729,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     /** The first top-bar button after Inputs that is shown, in bar order (top_bar_apps, the network pill, ...); Settings is always there. */
     private View firstTopButton() {
+        if (homeHeader != null) return homeHeader.pill;
         ViewGroup bar = findViewById(R.id.topButtons);
         // The Hebrew layout (layout-iw) lists the bar mirrored, Settings first and Inputs last, so bar order
         // runs from the end there. Walking it forwards returned Settings, and the pill key guard then treated
@@ -2758,6 +2773,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 continue;
             }
             TextView button = (TextView) getLayoutInflater().inflate(R.layout.top_app_button, bar, false);
+            UiFont.apply(button);
             // pillKeys finds the bar's ends by id: without one of its own, every app button would be an end.
             button.setId(View.generateViewId());
             logo.setBounds(0, 0, size, size);
@@ -2876,7 +2892,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private void updateClockVisibility() {
         boolean valid = System.currentTimeMillis() >= TIME_VALID_AFTER_MS;
-        clockBlock.setVisibility(valid ? View.VISIBLE : View.INVISIBLE);
+        clockBlock.setVisibility(valid && homeHeader == null ? View.VISIBLE : View.INVISIBLE);
+        if (homeHeader != null) homeHeader.updateGreeting(greeting.getText(), valid);
         handler.removeCallbacks(clockCheck);
         if (valid) {
             updateGreeting();
@@ -2931,6 +2948,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     : getString(R.string.greeting_with_name, text, greetingName));
             greeting.setTextColor(greetingColor);
         }
+        if (homeHeader != null) homeHeader.updateGreeting(greeting.getText(), System.currentTimeMillis() >= TIME_VALID_AFTER_MS);
         if (shamsi) shamsiDate.setText(Shamsi.today(getResources()));
         if (lunar) lunarDate.setText(Lunar.today(getResources(), lunarOffset));
     }
@@ -3370,6 +3388,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     /** Hides the Inputs pill when it would have nothing to list: streaming boxes have no HDMI-in, AV or tuner. */
     private void updateInputsButton() {
+        if (homeHeader != null) { btnInputs.setVisibility(View.GONE); return; }
         if (!showInputsPill) {
             btnInputs.setVisibility(View.GONE);
             return;
@@ -3573,8 +3592,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // Read the switch, not the pill: show_inputs_pill=false hides the pill too, and there the list
         // keeps its usual place.
         boolean underGear = topMenu;
-        View anchor = findViewById(underGear ? R.id.btnSettings : R.id.btnInputs);
+        View anchor = homeHeader != null ? homeHeader.pill : findViewById(underGear ? R.id.btnSettings : R.id.btnInputs);
         View panel = getLayoutInflater().inflate(R.layout.popup_inputs, root, false);
+        UiFont.apply(panel);
         LinearLayout rows = panel.findViewById(R.id.rows);
 
         // Compact: as wide as the Inputs pill (a touch wider so "HDMI 1" fits), hanging right below it.
@@ -3694,6 +3714,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         if (!folded.isEmpty()) {
             View more = getLayoutInflater().inflate(R.layout.item_input, rows, false);
+            UiFont.apply(more);
             ((ImageView) more.findViewById(R.id.icon)).setImageResource(R.drawable.ic_input);
             ((TextView) more.findViewById(R.id.title)).setText(R.string.more_inputs);
             more.findViewById(R.id.status).setVisibility(View.GONE);
@@ -3823,6 +3844,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private View addInputRow(LinearLayout rows, PopupWindow popup, int iconRes, String title, int state, Runnable action) {
         View row = getLayoutInflater().inflate(R.layout.item_input, rows, false);
+        UiFont.apply(row);
         ((ImageView) row.findViewById(R.id.icon)).setImageResource(iconRes);
         ((TextView) row.findViewById(R.id.title)).setText(title);
         TextView status = row.findViewById(R.id.status);
@@ -3851,8 +3873,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     /** top_menu: the gear's dropdown, standing in for the Inputs, Wi-Fi and Settings pills. */
     private void showTopMenu() {
-        View anchor = findViewById(R.id.btnSettings);
+        View anchor = homeHeader != null ? homeHeader.pill : findViewById(R.id.btnSettings);
         View panel = getLayoutInflater().inflate(R.layout.popup_inputs, root, false);
+        UiFont.apply(panel);
         LinearLayout rows = panel.findViewById(R.id.rows);
         PopupWindow popup = glassPopup(panel, (int) (220 * density));
         // Inputs opens its own list once this one has closed.
@@ -3880,8 +3903,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     /** The header opens launcher settings directly; hold OK keeps the extra home actions available. */
     private void showSettingsMenu() {
-        View anchor = findViewById(R.id.btnSettings);
+        View anchor = homeHeader != null ? homeHeader.pill : findViewById(R.id.btnSettings);
         View panel = getLayoutInflater().inflate(R.layout.popup_inputs, root, false);
+        UiFont.apply(panel);
         LinearLayout rows = panel.findViewById(R.id.rows);
         boolean restoreWatchNext = watchNextEnabled && !WatchNextDismissals.load(this).isEmpty();
         int minimumWidth = restoreWatchNext ? 300 : 200;
@@ -4032,6 +4056,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // Empty dock slots and the Default-home tile carry the launcher's own package: no menu for them.
         if (key == null || pkg == null || pkg.equals(getPackageName())) return;
         View panel = getLayoutInflater().inflate(R.layout.popup_inputs, root, false);
+        UiFont.apply(panel);
         LinearLayout rows = panel.findViewById(R.id.rows);
         PopupWindow popup = glassPopup(panel, (int) (200 * density));
         if (dockRow && position < adapter.movableCount()) {
@@ -4065,6 +4090,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         WatchNext.Item item = watchNextRow.itemForCard(card);
         if (item == null) return;
         View panel = getLayoutInflater().inflate(R.layout.popup_inputs, root, false);
+        UiFont.apply(panel);
         LinearLayout rows = panel.findViewById(R.id.rows);
         PopupWindow popup = glassPopup(panel, (int) (300 * density));
         addSettingsMenuRow(rows, popup, R.string.watch_next_remove, () -> {
@@ -4098,6 +4124,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private void addSettingsMenuRow(LinearLayout rows, PopupWindow popup, int title, Runnable action) {
         View row = getLayoutInflater().inflate(R.layout.item_input, rows, false);
+        UiFont.apply(row);
         row.findViewById(R.id.icon).setVisibility(View.GONE);
         row.findViewById(R.id.dot).setVisibility(View.GONE);
         row.findViewById(R.id.status).setVisibility(View.GONE);
@@ -4145,6 +4172,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (card == null) return;
 
         View panel = getLayoutInflater().inflate(R.layout.dialog_card_prompt, root, false);
+        UiFont.apply(panel);
         boolean rtl = getResources().getBoolean(R.bool.rtl_menu_bar);
         if (rtl) panel.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         ((TextView) panel.findViewById(R.id.title)).setText(getString(R.string.card_prompt_title, card.appLabel));
@@ -4236,8 +4264,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     }
 
     private void showModuleCardsNow() {
-        View anchor = findViewById(R.id.btnSettings);
+        View anchor = homeHeader != null ? homeHeader.pill : findViewById(R.id.btnSettings);
         View panel = getLayoutInflater().inflate(R.layout.popup_cards, root, false);
+        UiFont.apply(panel);
         if (getResources().getBoolean(R.bool.rtl_menu_bar))
             panel.setLayoutDirection(View.LAYOUT_DIRECTION_RTL);
         LinearLayout rows = panel.findViewById(R.id.rows);
@@ -4246,6 +4275,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         Collections.sort(listed, Cards::byLabel);
         for (Cards.Card card : listed) {
             View row = getLayoutInflater().inflate(R.layout.item_card_row, rows, false);
+            UiFont.apply(row);
             row.setTag(card.pkg);
             ((TextView) row.findViewById(R.id.title)).setText(card.label);
             if (getResources().getBoolean(R.bool.rtl_menu_bar)) {
