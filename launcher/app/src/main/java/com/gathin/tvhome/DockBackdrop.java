@@ -25,9 +25,18 @@ final class DockBackdrop {
                 || id == View.NO_ID && v instanceof ImageView;
     }
 
-    void draw(Canvas canvas, ViewGroup grid, RectF band, float radius) {
+    static int fillColor(int color, int opacity) {
+        return (Math.round((color >>> 24) * opacity / 100f) << 24) | (color & 0x00FFFFFF);
+    }
+
+    static int blurRadius(int opacity) {
+        return Math.round(4 * opacity / 100f);
+    }
+
+    void draw(Canvas canvas, ViewGroup grid, RectF band, float radius, int opacity) {
         ViewGroup root = grid.getRootView().findViewById(R.id.root);
         long key = System.currentTimeMillis() / 60000;
+        key = key * 31 + opacity;
         key = key * 31 + root.getWidth(); key = key * 31 + root.getHeight();
         for (int i = 0; i < root.getChildCount(); i++) {
             View v = root.getChildAt(i);
@@ -39,7 +48,7 @@ final class DockBackdrop {
         }
         if (key != signature) {
             signature = key;
-            capture(root);
+            capture(root, opacity);
         }
         clip.reset(); clip.addRoundRect(band, radius, radius, Path.Direction.CW);
         canvas.save(); canvas.clipPath(clip);
@@ -49,12 +58,12 @@ final class DockBackdrop {
             paint.setColor(0xFFFFFFFF);
             canvas.drawBitmap(image, null, new RectF(x, y, x + root.getWidth(), y + root.getHeight()), paint);
         }
-        paint.setColor(image == null ? 0xFF181818 : 0x69000000); // Figma's 41% black material
+        paint.setColor(fillColor(image == null ? 0xFF181818 : 0x69000000, opacity)); // Figma's 41% black material
         canvas.drawRect(band, paint);
         canvas.restore();
     }
 
-    private void capture(ViewGroup root) {
+    private void capture(ViewGroup root, int opacity) {
         Bitmap next = Bitmap.createBitmap(Math.max(1, root.getWidth() / 6), Math.max(1, root.getHeight() / 6), Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(next);
         c.scale(next.getWidth() / (float) root.getWidth(), next.getHeight() / (float) root.getHeight());
@@ -78,7 +87,7 @@ final class DockBackdrop {
                 } else v.draw(c);
                 c.restore();
             }
-            PopupMaterial.blur(next);
+            PopupMaterial.blur(next, blurRadius(opacity));
             image = next;
         } catch (RuntimeException error) {
             next.recycle();

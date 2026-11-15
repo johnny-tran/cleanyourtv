@@ -159,12 +159,17 @@ final class PopupMaterial extends Drawable {
     }
 
     static void blur(Bitmap image) {
+        blur(image, 4);
+    }
+
+    static void blur(Bitmap image, int radius) {
+        if (radius <= 0) return;
         int w = image.getWidth(), h = image.getHeight();
         int[] pixels = new int[w * h];
         image.getPixels(pixels, 0, w, 0, 0, w, h);
         for (int pass = 0; pass < 3; pass++) {
-            pixels = HeroArt.boxBlur(pixels, w, h, 4, true);
-            pixels = HeroArt.boxBlur(pixels, w, h, 4, false);
+            pixels = HeroArt.boxBlur(pixels, w, h, radius, true);
+            pixels = HeroArt.boxBlur(pixels, w, h, radius, false);
         }
         image.setPixels(pixels, 0, w, 0, 0, w, h);
     }

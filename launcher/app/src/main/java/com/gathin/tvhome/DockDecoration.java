@@ -38,13 +38,13 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
     private final boolean bandAll;
     private final float focusScale;
     private final boolean dark;
-    private final int materialAlpha;
+    private final int opacity;
     private final DockBackdrop backdrop = new DockBackdrop();
 
     /**
      * @param translucent the cinematic shelf's band: the artwork and the glow show through it.
      * @param names       the dock tiles show their names, so the band reaches down over them.
-     * @param opacity     the plain band's opacity, or the dark material's overall strength, in percent.
+     * @param opacity     the plain band's opacity, or the dark material's fill multiplier, in percent.
      * @param lightGlass  a light frosted band like the pills, for a sky or wallpaper behind it.
      * @param evenPadding the band's padding is the gap between the tiles on all four sides (dock_even_padding).
      * @param bandVisible false skips the band and its edge, so the tiles float on the wallpaper (dock_band).
@@ -55,7 +55,7 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
                    boolean evenPadding, boolean bandVisible, boolean singleRow, boolean bandAll, float focusScale, boolean dark) {
         this.dockSize = dockSize;
         this.dark = dark;
-        this.materialAlpha = Math.round(opacity * 255 / 100f);
+        this.opacity = opacity;
         this.focusScale = focusScale;
         this.singleRow = singleRow;
         this.bandAll = singleRow && bandAll;
@@ -135,14 +135,11 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
         if (dark) {
             // Horizontal bounds already include each end card's animated clearance.
             rect.top -= 20 * density; rect.bottom += 20 * density;
-            // Fade the finished material as one layer, retaining the designed tint/blur/stroke proportions.
-            int layer = materialAlpha < 255 ? c.saveLayerAlpha(rect, materialAlpha) : -1;
-            backdrop.draw(c, parent, rect, 30 * density);
+            backdrop.draw(c, parent, rect, 30 * density, opacity);
             // Figma's inside stroke: inset by half its width so it sits within the band, concentric with its corners.
             float half = inner.getStrokeWidth() / 2f;
             c.drawRoundRect(rect.left + half, rect.top + half, rect.right - half, rect.bottom - half,
                     30 * density - half, 30 * density - half, inner);
-            if (layer != -1) c.restoreToCount(layer);
             return;
         }
         float pad = 14 * density;

@@ -692,7 +692,7 @@ dock columns, focus in the grid below, exit and full-opacity restoration. The te
 and the final screenshot confirms the original app order. No current launcher crashes were logged.
 TV returned to confirmed sleep. Physical-remote testing and other devices remain unverified.
 
-### Opacity control for the custom dock
+### Opacity control for the custom dock (initial implementation)
 
 `DockDecoration.java` now applies the existing `dock_opacity` setting to the complete dark material,
 including the cached blurred background, 41% black tint and inside stroke. 100% preserves the current
@@ -859,3 +859,43 @@ Validation: release build, zero-error lint, 368 JVM tests and 61 documentation c
 (622,805-byte APK). Installed on Sony Android TV 12; opening App Library via the sidebar confirms
 **App Library** in its UI hierarchy. Private screenshot: `shots/206-app-library-heading.png`.
 Library closed and TV returned to confirmed sleep. Other locales and physical-remote feel unchecked.
+
+
+### Dock opacity multiplies only the fill
+
+`DockDecoration.java` passes the existing percentage to `DockBackdrop.java` instead of fading the
+completed dock through a compositing layer. The material's base fill alpha is multiplied by that
+percentage: the current 0x69 (about 41%) black fill at 75% becomes 0x4F (about 31%). RGB stays intact,
+so future fill-color/alpha changes retain the same relative control. The fallback fill uses the same
+calculation. Blur, inner stroke, geometry and app tiles retain full strength. The original non-dark
+dock behavior, saved choices, theme reset and available 100/70/50/30 presets are unchanged.
+`DockOpacityTest.java` covers base preservation, fractional rounding, alternate RGB/alpha, fallback
+and transparent fills; `themes/README.md` and `Config.java` describe the revised semantics.
+This supersedes the complete-material fading described above.
+
+Validation: release build, zero-error lint, 369 JVM tests and 61 focused documentation checks pass
+(623,573-byte APK). Installed on Sony BRAVIA Android TV 12; settings selection exercises 100% and
+30%, then restores the original 100%. Private screenshots `shots/232-dock-fill-100.png`,
+`233-dock-fill-30.png` and `234-dock-fill-restored.png` capture the check. Matching grid-state pixel
+samples follow the expected fill-alpha ratio within one channel value, and an opaque app-artwork
+crop is identical across the two settings. TV returned to confirmed sleep. Other dock styles retain
+existing behavior; their TV appearance and the capture-failure fallback were not exercised.
+
+
+### Dock blur follows the opacity multiplier
+
+The custom dock now scales its cached blur radius by the same opacity percentage as its base fill.
+At the existing one-sixth-resolution capture, the three-pass box blur uses radius 4 at 100%, 3 at
+70/75%, 2 at 50%, and 1 at 30%. Integer rounding reflects the blur's pixel kernel; popup/sidebar blur
+keeps its unchanged radius 4 through `PopupMaterial.blur(Bitmap)`. No per-frame blur or sharp/blur
+crossfade is added. The dock cache key includes opacity, so a changed percentage rebuilds its blur;
+outline, geometry and artwork stay unchanged. This supersedes the unchanged-blur statement above.
+`DockOpacityTest.java` covers the radius mapping, alongside existing fill and preference tests.
+
+Validation: release build, zero-error lint, 370 JVM tests and 61 focused documentation checks pass
+(623,597-byte APK). Installed on Sony BRAVIA Android TV 12; settings checks exercise 100% and 30%,
+then restore the original 100%. `shots/235-dock-fill-100.png`, `236-dock-fill-30.png` and
+`237-dock-fill-restored.png` capture the result. Compared with the previous 30% screenshot, the
+wallpaper details are sharper inside the dock and an opaque tile crop remains byte-identical.
+TV returned to confirmed sleep. Other devices, performance profiling and capture-failure fallback
+were not tested.
