@@ -15,6 +15,8 @@ import android.graphics.Outline;
 import android.graphics.PixelFormat;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.StateListDrawable;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.provider.Settings;
@@ -951,6 +953,14 @@ public class AppAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                 }
             });
             card.setClipToOutline(true);
+            if (darkDock) {
+                StateListDrawable outline = new StateListDrawable();
+                outline.addState(new int[]{android.R.attr.state_focused}, new GlassEdge(.5f * density, -1f));
+                outline.addState(new int[]{}, new ColorDrawable(Color.TRANSPARENT));
+                outline.setEnterFadeDuration(!animations ? 0 : reducedMotion ? Motion.REDUCED_MS : 260);
+                outline.setExitFadeDuration(!animations ? 0 : reducedMotion ? 60 : 180);
+                card.setForeground(outline);
+            }
             TileShadow.prepare(card, focusStyle);
             if (darkDock) card.animate().setUpdateListener(animation -> {
                 // Property-only tile zoom must redraw the dock decoration too, without relayout.

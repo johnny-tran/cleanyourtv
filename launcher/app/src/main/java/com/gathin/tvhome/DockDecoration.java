@@ -18,8 +18,7 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
     private final float density;
     private final Paint band = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint edge = new Paint(Paint.ANTI_ALIAS_FLAG);
-    /** Figma's inner stroke on the dark band: #fff at 10%, 2px (1dp), drawn inside the band's edge. */
-    private final Paint inner = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final GlassEdge glassEdge;
     private final RectF rect = new RectF();
 
     /** Extra band below the tiles for their names (always_show_names), in px. */
@@ -60,6 +59,7 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
         this.singleRow = singleRow;
         this.bandAll = singleRow && bandAll;
         this.density = density;
+        glassEdge = new GlassEdge(1.5f * density, 30 * density);
         this.namesRoom = names ? 22 * density : 0;
         this.lightGlass = lightGlass;
         this.evenPadding = evenPadding;
@@ -68,9 +68,6 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
         edge.setStyle(Paint.Style.STROKE);
         edge.setStrokeWidth(density);
         edge.setColor(lightGlass ? 0x38FFFFFF : translucent ? 0x26FFFFFF : 0x1FFFFFFF);
-        inner.setStyle(Paint.Style.STROKE);
-        inner.setStrokeWidth(density);
-        inner.setColor(0x1AFFFFFF);
     }
 
     /** Concentric corners: the band's radius is the tiles' radius plus the band's padding around them. */
@@ -136,10 +133,7 @@ public class DockDecoration extends RecyclerView.ItemDecoration {
             // Horizontal bounds already include each end card's animated clearance.
             rect.top -= 20 * density; rect.bottom += 20 * density;
             backdrop.draw(c, parent, rect, 30 * density, opacity);
-            // Figma's inside stroke: inset by half its width so it sits within the band, concentric with its corners.
-            float half = inner.getStrokeWidth() / 2f;
-            c.drawRoundRect(rect.left + half, rect.top + half, rect.right - half, rect.bottom - half,
-                    30 * density - half, 30 * density - half, inner);
+            glassEdge.draw(c, rect);
             return;
         }
         float pad = 14 * density;

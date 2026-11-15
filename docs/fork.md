@@ -50,6 +50,7 @@ else comes from upstream untouched, so all of upstream's new features arrive wit
 New files (cannot conflict):
 - `launcher/app/src/main/java/com/gathin/tvhome/HomeHeader.java` — opt-in greeting, clock/avatar pill and anchored glass sidebar.
 - `launcher/app/src/main/java/com/gathin/tvhome/DockLayout.java` and `DockBackdrop.java` — dark dock geometry and cached blurred material.
+- `launcher/app/src/main/java/com/gathin/tvhome/GlassEdge.java` — shared directional, feathered glass edges for the dark dock and app tiles.
 - `launcher/app/src/main/java/com/gathin/tvhome/TileShadow.java` — card-local focus shadow and cached resting radiosity.
 - `launcher/app/src/main/res/drawable/action_row_bg.xml` — simple focused fill for Glass action menus, preserving original row corners.
 - `launcher/app/src/main/res/drawable/watch_scrim.xml` — large-card metadata gradient.
@@ -917,3 +918,49 @@ alignment. Private screenshots `shots/238-action-sidebar-header-aligned.png`,
 `239-action-sidebar-header-sidebar.png` and `240-action-sidebar-header-return.png` capture the states.
 The first startup capture preceded Watch Next population; a subsequent capture verified the cards.
 TV returned to confirmed sleep. Other column counts, RTL and physical-remote feel were not retested.
+
+
+### Directional glass edges on dock and app tiles
+
+`GlassEdge.java` draws a translucent top-left white highlight fading toward a faint bottom-right
+shade, using three inset strokes to feather the inner edge without a live blur or texture cache.
+`DockDecoration.java` replaces the dark dock's uniform inside line with a 1.5dp core and soft 4.5dp
+edge. `AppAdapter.java` adds a foreground with the same lighting at 0.5dp/1.5dp to dark-style app
+tiles on Home; proportional tile corners and scaling carry the edge with each card.
+Artwork interiors, resting radiosity, focus growth/shadow, Watch Next posters, dock fill/blur opacity,
+header/sidebar and non-dark styles retain their existing behavior. This is a photo-inspired trial,
+not a reproduction of Apple's private shader. No additional setting, dependency or permission.
+
+Validation: release build, zero-error lint, 370 JVM tests and 61 focused documentation checks pass
+(623,957-byte APK). Installed on Sony BRAVIA Android TV 12. Private screenshots
+`shots/241-action-sidebar-glass-edge-rest.png` through `244-action-sidebar-glass-edge-grid.png`
+cover resting tiles, first/neighbor dock focus and the grid below. Pixel assertions against the
+prior Home capture confirm changed dock/tile edge strips while sampled dock-fill and artwork
+interiors are byte-identical. Injected focus/Down paths pass; TV returned to confirmed sleep.
+Physical-remote feel, other styles/devices and performance profiling were not retested.
+
+Glass-edge refinement: lower the top-left white stop from 50% to 35%, increase the middle white
+stop from 9% to 16%, and replace the faint black tail with 12.5% white. The entire edge now retains
+a subtle visible enclosure while keeping directional lighting; widths, feathering and all fills,
+shadows and focus behavior stay unchanged. Dock and Home app tiles share the revised gradient.
+
+Validation: release build, zero-error lint, 370 JVM tests and 61 focused documentation checks pass
+(623,957-byte APK). Installed on Sony BRAVIA Android TV 12; resting/focused states captured in
+`shots/245-action-sidebar-glass-edge-rest-soft.png` and `246-action-sidebar-glass-edge-focus-soft.png`.
+Pixel assertions confirm reduced brightness at the highlight start, increased visibility at the
+bottom-right edge, and an unchanged artwork interior crop. TV returned to confirmed sleep.
+Physical-remote feel, other devices and performance profiling were not retested.
+
+Focus-only app edge: `AppAdapter.java` wraps the glass foreground in Android's focus-state drawable.
+Unfocused cards have no glass outline. Focus fades the edge in over 260ms and out over 180ms,
+matching normal Home growth timing; reduced/disabled animation settings use the existing short/zero
+transitions. State follows the actual card focus, including recycled cells, without a moving cursor
+or extra animator. The dock's continuous edge remains unchanged.
+
+Validation: release build, zero-error lint, 370 JVM tests and 61 focused documentation checks pass
+(624,069-byte APK). Installed on Sony BRAVIA Android TV 12; private screenshots
+`shots/247-action-sidebar-glass-edge-rest.png` through `250-action-sidebar-glass-edge-grid.png`
+cover initial state, first/neighbor focus and the grid below. Pixel assertions match an unfocused
+card to the pre-edge baseline, preserve the prior focused treatment exactly, and confirm the old
+card's edge clears after focus moves (excluding the neighbor's overlapping shadow). TV returned
+to confirmed sleep. Physical-remote feel, reduced/disabled animations and performance were not tested.
