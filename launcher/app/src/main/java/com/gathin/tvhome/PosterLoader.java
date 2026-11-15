@@ -7,6 +7,7 @@ import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.LruCache;
+import android.util.Log;
 import android.widget.ImageView;
 
 import java.io.ByteArrayOutputStream;
@@ -35,29 +36,58 @@ final class PosterLoader {
     private PosterLoader() {
     }
 
+    private static final class Request {
+        final String uri;
+        Request(String uri) { this.uri = uri; }
+    }
+
     static void load(Context ctx, String uri, ImageView target, int maxWidth, Runnable onLoaded) {
-        target.setTag(uri);
+        Object previous = target.getTag();
+        if (previous instanceof Request && uri.equals(((Request) previous).uri)) return;
+        Request request = new Request(uri);
+        target.setTag(request);
+        target.setImageDrawable(null);
         Bitmap cached = CACHE.get(uri);
         if (cached != null) {
             target.setImageBitmap(cached);
             onLoaded.run();
             return;
         }
-        Context app = ctx.getApplicationContext();
+        attempt(ctx.getApplicationContext(), request, target, maxWidth, onLoaded, 0);
+    }
+
+    private static void attempt(Context app, Request request, ImageView target, int maxWidth,
+                                Runnable onLoaded, int attempt) {
         EXECUTOR.execute(() -> {
-            Bitmap bmp;
+            Bitmap bmp = null;
+            boolean retry = true;
             try {
-                bmp = decode(app, uri, maxWidth);
-            } catch (Exception | OutOfMemoryError e) {
-                bmp = null;
+                bmp = decode(app, request.uri, maxWidth);
+                if (bmp == null) Log.w("PosterLoader", "Artwork unavailable or undecodable; attempt " + (attempt + 1));
+            } catch (Exception e) {
+                // Exception messages can contain private artwork URLs; log only the failure type.
+                Log.w("PosterLoader", "Artwork attempt " + (attempt + 1) + ": " + e.getClass().getSimpleName());
+            } catch (OutOfMemoryError e) {
+                retry = false;
+                Log.w("PosterLoader", "Artwork decode exceeded available memory");
             }
-            if (bmp == null) return;
-            CACHE.put(uri, bmp);
+            if (bmp != null) CACHE.put(request.uri, bmp);
             final Bitmap result = bmp;
+            final boolean canRetry = retry;
             MAIN.post(() -> {
-                if (uri.equals(target.getTag())) {
+                if (target.getTag() != request) return;
+                if (result != null) {
                     target.setImageBitmap(result);
                     onLoaded.run();
+                } else if (canRetry && attempt < 2 && target.isAttachedToWindow()) {
+                    MAIN.postDelayed(() -> {
+                        if (target.getTag() != request) return;
+                        if (target.isAttachedToWindow())
+                            attempt(app, request, target, maxWidth, onLoaded, attempt + 1);
+                        else target.setTag(null);
+                    }, attempt == 0 ? 2000 : 5000);
+                } else {
+                    target.setTag(null); // Allow a fresh attempt on the next Home refresh.
                 }
             });
         });
@@ -80,30 +110,33 @@ final class PosterLoader {
         Uri parsed = Uri.parse(uri);
         String scheme = parsed.getScheme() == null ? "" : parsed.getScheme().toLowerCase(Locale.ROOT);
         HttpURLConnection conn = null;
-        InputStream in;
-        if (scheme.equals("http") || scheme.equals("https")) {
-            conn = (HttpURLConnection) new URL(uri).openConnection();
-            conn.setConnectTimeout(5000);
-            conn.setReadTimeout(8000);
-            if (conn.getResponseCode() / 100 != 2) {
-                conn.disconnect();
-                return null;
+        try {
+            InputStream in;
+            if (scheme.equals("http") || scheme.equals("https")) {
+                conn = (HttpURLConnection) new URL(uri).openConnection();
+                conn.setConnectTimeout(5000);
+                conn.setReadTimeout(8000);
+                int status = conn.getResponseCode();
+                if (status / 100 != 2) {
+                    Log.w("PosterLoader", "Artwork HTTP status " + status);
+                    return null;
+                }
+                in = conn.getInputStream();
+            } else {
+                // content://, android.resource:// and anything else the resolver can open.
+                in = ctx.getContentResolver().openInputStream(parsed);
             }
-            in = conn.getInputStream();
-        } else {
-            // content://, android.resource:// and anything else the resolver can open.
-            in = ctx.getContentResolver().openInputStream(parsed);
-        }
-        if (in == null) return null;
-        try (InputStream s = in) {
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            byte[] buf = new byte[16 * 1024];
-            int n;
-            while ((n = s.read(buf)) >= 0) {
-                out.write(buf, 0, n);
-                if (out.size() > MAX_BYTES) return null;
+            if (in == null) return null;
+            try (InputStream s = in) {
+                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                byte[] buf = new byte[16 * 1024];
+                int n;
+                while ((n = s.read(buf)) >= 0) {
+                    out.write(buf, 0, n);
+                    if (out.size() > MAX_BYTES) return null;
+                }
+                return out.toByteArray();
             }
-            return out.toByteArray();
         } finally {
             if (conn != null) conn.disconnect();
         }

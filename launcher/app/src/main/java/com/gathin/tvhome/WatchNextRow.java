@@ -147,7 +147,15 @@ final class WatchNextRow {
             sig.append(it.title).append(':').append(it.subtitle).append(':').append(it.art)
                     .append(':').append(it.progress).append('|');
         }
-        if (loaded && sig.toString().equals(signature)) return;   // nothing changed since the last read
+        if (loaded && sig.toString().equals(signature)) {
+            // Keep focus and scroll intact while giving missing artwork another chance on Home.
+            for (int i = 0; i < row.getChildCount(); i++) {
+                View v = row.getChildAt(i);
+                if (((ImageView) v.findViewById(R.id.poster)).getDrawable() == null)
+                    loadPoster(v, items.get(i));
+            }
+            return;
+        }
         signature = sig.toString();
         loaded = true;
 
@@ -210,14 +218,7 @@ final class WatchNextRow {
             track.setVisibility(View.GONE);
         }
 
-        if (item.art != null) {
-            PosterLoader.load(container.getContext(), item.art, poster,
-                    largeCards() ? Math.round(card.getLayoutParams().width * 1.1f) : (int) (320 * density),
-                    () -> {
-                        fallback.setVisibility(View.GONE);
-                        if (card.isFocused()) host.onCardFocused(card);
-                    });
-        }
+        loadPoster(v, item);
 
         card.setOnFocusChangeListener((view, focused) -> {
             TileFocus.animate(view, poster, name, focused, cfg.animations, focusAdvancedEffects(),
@@ -255,6 +256,18 @@ final class WatchNextRow {
         });
         card.setOnClickListener(view -> launch(item));
         return v;
+    }
+
+    private void loadPoster(View itemView, WatchNext.Item item) {
+        if (item.art == null) return;
+        View card = itemView.findViewById(R.id.watch_card);
+        ImageView poster = itemView.findViewById(R.id.poster);
+        PosterLoader.load(container.getContext(), item.art, poster,
+                largeCards() ? Math.round(card.getLayoutParams().width * 1.1f) : (int) (320 * density),
+                () -> {
+                    itemView.findViewById(R.id.fallback_title).setVisibility(View.GONE);
+                    if (card.isFocused()) host.onCardFocused(card);
+                });
     }
 
     private void sizePoster(View item) {

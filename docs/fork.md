@@ -59,7 +59,7 @@ New files (cannot conflict):
 - `launcher/app/src/main/java/com/gathin/tvhome/PopupMaterial.java` — a one-shot blurred Home backdrop with dark tint for popup menus.
 - `launcher/app/src/main/java/com/gathin/tvhome/PopupPlacement.java` — keeps dropdown menus at least 24dp inside the viewport while preserving anchor alignment when it fits; accounts for focus zoom to keep a consistent 10dp tile-to-menu gap.
 - `launcher/app/src/main/java/com/gathin/tvhome/WatchNext.java` — the Watch Next provider query.
-- `launcher/app/src/main/java/com/gathin/tvhome/PosterLoader.java` — poster download and cache.
+- `launcher/app/src/main/java/com/gathin/tvhome/PosterLoader.java` — poster download, memory cache and bounded failure recovery.
 - `launcher/app/src/main/java/com/gathin/tvhome/WatchNextDismissals.java` — local removals, restored by newer published viewing activity or manually.
 - `launcher/app/src/main/java/com/gathin/tvhome/WatchNextRow.java` — the row: its view, render and focus.
 - `launcher/app/src/main/java/com/gathin/tvhome/WatchNextScrollView.java` — focus scrolling that preserves the row's margins.
@@ -805,3 +805,29 @@ at 1080p; focus movement and dismiss/return paths pass. Private screenshots:
 `shots/225-action-sidebar-app-first.png` through `231-action-sidebar-sidebar-reference.png`.
 TV returned to confirmed sleep. Physical hold behavior, Classic and RTL were not retested;
 injected Menu opened app/Watch Next actions, while avatar/Library used injected long-press.
+
+
+### Recover missing Watch Next artwork
+
+`PosterLoader.java` retries a failed image twice, after 2s and then 5s, using the existing two-worker
+pool and memory cache. One request token per image view prevents duplicate pending loads and stale
+callbacks from replacing a newer card. Delayed retries stop when the view is detached; exhausted
+requests can start again on a later Home refresh. Memory exhaustion does not trigger automatic retry.
+`WatchNextRow.java` retries only missing posters when the provider result is unchanged, preserving
+existing cards, focus and horizontal scroll. Successful images are retained. HTTP connections now
+close even when opening/reading fails. Diagnostics report status codes or exception class names,
+without logging artwork URLs, titles or exception messages. There is no disk cache, permanent polling,
+new permission, dependency or connectivity-setting change.
+
+Validation: a local on-TV HTTP fixture running the actual loader first reproduced the old failure
+(503 followed by no retry), then passed automatic recovery, three-attempt limit, in-flight
+deduplication, renewed loading after exhaustion, memory-cache reuse and detached-view cancellation.
+The isolated harness and private results are in `work/poster-loader-test/` and
+`work/poster-diagnosis/test-after-result.txt`. Release assembly, zero-error lint and all 368 JVM
+checks pass (622,773-byte APK).
+Installed on Sony Android TV 12; real Disney+/HBO Max artwork loaded after launcher restart and after
+leaving/returning Home, with no artwork warnings from the launcher process. Private screenshots:
+`shots/200-poster-recovery-home.png` and `201-poster-recovery-resume.png`. All 61 targeted documentation
+checks pass. The isolated test package was disabled afterward and the TV returned to confirmed sleep.
+The original intermittent startup failure was not reproduced; prolonged outages, expired provider URLs
+and physical-remote feel remain unverified. Retries cannot recover artwork that its source no longer serves.
