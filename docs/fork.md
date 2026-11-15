@@ -752,3 +752,35 @@ clearance beside the focused card, with no overlap when moving to its neighbor. 
 checks at the wider spacing confirmed full 324x416px focused cards and focus recovery; those stress
 checks were not repeated at 40px. TV returned to confirmed sleep. Physical-remote feel, RTL,
 reduced-motion and disabled-animation device configurations remain unverified.
+
+### Softer dark sidebar material trial
+
+`HomeHeader.java` keeps the avatar/profile anchor and 84px button height while reducing row gaps
+from 20px to 12px, increasing list side/bottom padding to 16px, and using 58px outer corners
+at the 1920px design size. The sidebar is now 440x400px. Its expanded tint is 55% black; the closed
+clock pill and its focus tint are unchanged. Morph geometry and mask prewarming use the new bounds.
+`PopupMaterial.java` samples that same explicit tint for button backdrops, so they share the container.
+`SidebarButtonMaterial.java` uses 8% white for inactive buttons and 80% white for focus over the sampled
+blur, with the original top/bottom inset lighting and edge strokes restored for rounded glass
+dimensionality. Focus has a cached 20% black shadow at 0/6px
+with a 16px radius; inactive shadows stay faint. Color Dodge is removed. The shared worker still
+bakes both states once; focus movement chooses the cached image. Existing timing, navigation,
+private assets, dock, Watch Next and other popup materials are unchanged. These are photo-inspired
+trial values, not measured Apple specifications. `SidebarButtonMaterialTest.java` checks retained
+backdrop variation, the white blends, shared lighting and clamping.
+Validation: release assembly, zero-error lint, all 368 JVM tests and 61 documentation checks pass
+(622,225-byte APK). Installed on Sony Android TV 12. Numbered private screenshots
+`shots/189-sidebar-soft-inputs.png`, `190-sidebar-soft-library.png`, `191-sidebar-soft-settings.png`
+and `192-sidebar-soft-closed.png` cover the three focused rows and reverse close. UI hierarchy
+assertions confirm 408x84px buttons, 12px gaps and 16px horizontal clearance; avatar pixel comparisons
+preserve the same photo and screen anchor before/after and open/closed. Injected checks cover row
+edges, reverse close, App Library launch/return and restored clock focus. No launcher crashes were
+logged; TV returned to confirmed sleep. Physical-remote feel and performance profiling remain untested.
+
+Glass-depth refinement: restored the original 40/-25 inset highlight/shade contributions and dark
+edge strokes only, retaining the trial's geometry, white blends and focus shadow. Release build,
+zero-error lint, 368 JVM tests and 61 documentation checks pass (622,229-byte APK). Installed on
+Sony Android TV 12; injected checks cover all sidebar rows, reverse close and App Library return.
+Private screenshots `shots/193-sidebar-glass-restored-inputs.png` through
+`196-sidebar-glass-restored-closed.png` capture the states. TV returned to confirmed sleep.
+Figma remains unchanged; physical-remote feel and performance profiling remain untested.

@@ -14,11 +14,12 @@ public class SidebarButtonMaterialTest {
         assertNotSame(first, SidebarButtonMaterial.lighting(16, 8, 4, 1));
     }
 
-    @Test public void focusAddsTheDodgeAndScreenFillsBelowSharedLighting() {
+    @Test public void focusRetainsBackdropUnderWhiteAndSharesGlassEdgeLighting() {
         int off = SidebarButtonMaterial.shadePixel(0xFF202020, false, 0, 0) & 255;
         int on = SidebarButtonMaterial.shadePixel(0xFF202020, true, 0, 0) & 255;
-        assertEquals(56, off);
-        assertEquals(201, on);
+        assertEquals(50, off);
+        assertEquals(210, on);
+        assertTrue((SidebarButtonMaterial.shadePixel(0xFF808080, true, 0, 0) & 255) > on);
         for (boolean focused : new boolean[]{false, true}) {
             int base = SidebarButtonMaterial.shadePixel(0xFF202020, focused, 0, 0) & 255;
             assertEquals(base + 20, SidebarButtonMaterial.shadePixel(
@@ -38,7 +39,7 @@ public class SidebarButtonMaterialTest {
 
     @Test public void blendsClampAtBlackAndWhite() {
         assertEquals(0xFFFFFFFF, SidebarButtonMaterial.shadePixel(0xFFFFFFFF, true, 1, 0));
-        assertEquals(0xFF000000, SidebarButtonMaterial.shadePixel(0xFF000000, false, 0, 2));
+        assertEquals(0xFF000000, SidebarButtonMaterial.shadePixel(0xFF000000, false, 0, 4));
     }
 
     @Test public void sidebarLightingUsesItsOwnCornerInsteadOfTheButtonPillRadius() {

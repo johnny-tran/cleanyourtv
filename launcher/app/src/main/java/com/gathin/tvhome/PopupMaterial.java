@@ -228,7 +228,7 @@ final class PopupMaterial extends Drawable {
     }
 
     /** Sample the final row position from this same cached Home blur, beneath the sidebar tint. */
-    Bitmap buttonBackdrop(View row, float rowTranslationY) {
+    Bitmap buttonBackdrop(View row, float rowTranslationY, int tint) {
         int[] at = new int[2];
         row.getLocationOnScreen(at);
         float x = at[0] - rootX, y = at[1] - rowTranslationY - rootY;
@@ -237,7 +237,7 @@ final class PopupMaterial extends Drawable {
         canvas.drawBitmap(backdrop, null,
                 new RectF(-x, -y, rootWidth - x, rootHeight - y),
                 new Paint(Paint.FILTER_BITMAP_FLAG));
-        canvas.drawColor(0x69000000);
+        canvas.drawColor(tint);
         if (sidebarLight != null && panel.getParent() instanceof View) {
             ((View) panel.getParent()).getLocationOnScreen(at);
             float left = at[0] - rootX - x, top = at[1] - rootY - y;

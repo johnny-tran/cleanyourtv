@@ -14,7 +14,7 @@ import android.graphics.drawable.Drawable;
 import android.view.View;
 import java.util.ArrayDeque;
 
-/** Figma BG's shared edge lighting and focus-only fill, baked once per backdrop/size. */
+/** Soft sidebar glass, with shared edge lighting and a focus shadow baked once per backdrop/size. */
 final class SidebarButtonMaterial extends Drawable {
     // Accessed only by the shared material worker; retain just the container and button shapes.
     private static final ArrayDeque<Lighting> LIGHTING = new ArrayDeque<>();
@@ -92,8 +92,8 @@ final class SidebarButtonMaterial extends Drawable {
                 on[i] = shadePixel(source[i], true, lighting.highlights[i], lighting.shade[i]);
             }
             int padding = Math.max(1, Math.round(24 * designScale));
-            Bitmap nextNormal = bake(off, w, h, padding);
-            Bitmap nextSelected = bake(on, w, h, padding);
+            Bitmap nextNormal = bake(off, w, h, padding, false);
+            Bitmap nextSelected = bake(on, w, h, padding, true);
             owner.post(() -> {
                 if (version != generation || !owner.isAttachedToWindow() || owner.getBackground() != this) {
                     nextNormal.recycle(); nextSelected.recycle();
@@ -110,14 +110,15 @@ final class SidebarButtonMaterial extends Drawable {
         });
     }
 
-    private Bitmap bake(int[] pixels, int w, int h, int pad) {
+    private Bitmap bake(int[] pixels, int w, int h, int pad, boolean focus) {
         Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
         Bitmap result = Bitmap.createBitmap(w + 2 * pad, h + 2 * pad, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(result);
         RectF face = new RectF(pad, pad, pad + w, pad + h);
         float radius = h / 2f;
         paint.setStyle(Paint.Style.FILL); paint.setColor(0xFF000000);
-        paint.setShadowLayer(15 * designScale, 0, 8 * designScale, 0x05000000);
+        paint.setShadowLayer((focus ? 16 : 12) * designScale, 0,
+                (focus ? 6 : 2) * designScale, focus ? 0x33000000 : 0x03000000);
         canvas.drawRoundRect(face, radius, radius, paint);
         paint.clearShadowLayer();
         Bitmap fill = Bitmap.createBitmap(pixels, w, h, Bitmap.Config.ARGB_8888);
@@ -163,14 +164,9 @@ final class SidebarButtonMaterial extends Drawable {
     }
 
     private static int channel(int value, boolean focus, float highlights, float shade) {
-        // Shared #101010 additive fill and neutral 4% luminosity lift.
-        float result = Math.min(255, value + 16);
-        result += (255 - result) * .04f;
-        if (focus) {
-            result = Math.min(255, result / (1f - 111f / 255f)); // #6f6f6f Color Dodge.
-            result += (255 - result) * .65f; // White 65% Screen, below the shared lighting.
-        }
-        result += 40 * highlights - 25 * shade; // #282828 additive and #e6e6e6 linear burn.
+        // Keep the sampled container visible beneath both states; focus adds white without Color Dodge.
+        float result = value + (255 - value) * (focus ? .80f : .08f);
+        result += 40 * highlights - 25 * shade;
         return Math.round(Math.max(0, Math.min(255, result)));
     }
 
