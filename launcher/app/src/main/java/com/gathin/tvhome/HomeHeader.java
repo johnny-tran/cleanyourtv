@@ -32,7 +32,7 @@ import java.util.function.Consumer;
 
 /** Opt-in Figma header. Private prototype fonts/art live beside config.json, outside the APK. */
 final class HomeHeader {
-    private static final int SIDEBAR_TINT = 0x8C000000; // 55% black; closed pill keeps its own material.
+    private static final int SIDEBAR_TINT = PopupMaterial.SIDEBAR_TINT; // 55% black; closed pill keeps its own material.
     private final Activity activity;
     private final FrameLayout root;
     private final Config config;
@@ -93,7 +93,7 @@ final class HomeHeader {
                 material -> pill.setBackground(pillBackground(material))));
         PopupMaterial.RENDERER.execute(() -> {
             SidebarButtonMaterial.lighting(dp(220), dp(32) + 2 * dp(11) + 3 * dp(42)
-                    + 2 * dp(6) + dp(8), dp(29), density / 2f);
+                    + 2 * dp(6) + dp(8), dp(PopupMaterial.SIDEBAR_RADIUS_DP), density / 2f);
             SidebarButtonMaterial.lighting(dp(220) - 2 * dp(8), dp(42), dp(42) / 2f, density / 2f);
         });
     }
@@ -137,7 +137,7 @@ final class HomeHeader {
         rows.setOrientation(LinearLayout.VERTICAL);
         rows.setClipChildren(false);
         rows.setClipToPadding(false);
-        rows.setPadding(dp(8), 0, dp(8), dp(8));
+        rows.setPadding(dp(PopupMaterial.SIDEBAR_PADDING_DP), 0, dp(PopupMaterial.SIDEBAR_PADDING_DP), dp(PopupMaterial.SIDEBAR_PADDING_DP));
         content.addView(rows);
         SidebarPopup popup = new SidebarPopup(wrapper, panel);
         popup.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Color.TRANSPARENT));
@@ -232,12 +232,12 @@ final class HomeHeader {
             // Let Home draw without the pill before capturing the sidebar's backdrop.
             panel.postOnAnimation(() -> panel.postOnAnimation(() -> {
                 if (popup.isShowing()) PopupMaterial.apply(activity.getWindow(), root,
-                        panel.surface, config.popupStyle, dp(29), material -> {
+                        panel.surface, config.popupStyle, dp(PopupMaterial.SIDEBAR_RADIUS_DP), material -> {
                             panel.surface.setBackground(material);
                             panel.progress(panel.fraction);
                             if (material instanceof PopupMaterial) {
                                 PopupMaterial glass = (PopupMaterial) material;
-                                glass.setSidebarGlass(panel.getWidth(), panel.getHeight(), dp(29),
+                                glass.setSidebarGlass(panel.getWidth(), panel.getHeight(), dp(PopupMaterial.SIDEBAR_RADIUS_DP),
                                         () -> prepareButtons.accept(glass));
                             }
                         }, () -> prepareButtons.accept(null));
@@ -323,7 +323,7 @@ final class HomeHeader {
         MorphPanel() {
             super(activity);
             surface = new View(activity);
-            surface.setBackground(panel(SIDEBAR_TINT, 29));
+            surface.setBackground(panel(SIDEBAR_TINT, PopupMaterial.SIDEBAR_RADIUS_DP));
             addView(surface, new FrameLayout.LayoutParams(0, 0));
         }
 
@@ -364,7 +364,7 @@ final class HomeHeader {
             if (!ready) return;
             bounds.set(mix(closed.left, 0, value), mix(closed.top, 0, value),
                     mix(closed.right, getWidth(), value), mix(closed.bottom, getHeight(), value));
-            float radius = mix(closed.height() / 2f, dp(29), value);
+            float radius = mix(closed.height() / 2f, dp(PopupMaterial.SIDEBAR_RADIUS_DP), value);
             surface.layout(Math.round(bounds.left), Math.round(bounds.top),
                     Math.round(bounds.right), Math.round(bounds.bottom));
             Drawable material = surface.getBackground();

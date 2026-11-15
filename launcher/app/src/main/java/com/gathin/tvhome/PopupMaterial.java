@@ -13,6 +13,9 @@ import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Shader;
 import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.view.View;
 import android.view.PixelCopy;
 import android.view.Window;
@@ -24,6 +27,45 @@ import java.util.concurrent.Executors;
 
 /** A single small Home snapshot, blurred once when a menu opens; never captures another app. */
 final class PopupMaterial extends Drawable {
+    static final int SIDEBAR_TINT = 0x8C000000;
+    static final int SIDEBAR_RADIUS_DP = 29, SIDEBAR_PADDING_DP = 8;
+
+    /** Match the sidebar container, keeping action-row geometry and inactive styling intact. */
+    static void applyActions(Window window, View root, View panel, String style) {
+        LinearLayout rows = panel.findViewById(R.id.rows);
+        boolean classic = Config.POPUP_CLASSIC.equals(style);
+        for (int i = 0; i < rows.getChildCount(); i++) {
+            View row = rows.getChildAt(i);
+            ((TextView) row.findViewById(R.id.title)).setTypeface(UiFont.get(panel.getContext(), R.string.font_medium));
+            if (!classic) row.setBackgroundResource(R.drawable.action_row_bg);
+        }
+        if (classic) return;
+        float density = panel.getResources().getDisplayMetrics().density;
+        int padding = Math.round(SIDEBAR_PADDING_DP * density);
+        float corner = SIDEBAR_RADIUS_DP * density;
+        panel.setPadding(padding, padding, padding, padding);
+        panel.setElevation(0f);
+        GradientDrawable fallback = new GradientDrawable();
+        fallback.setColor(SIDEBAR_TINT); fallback.setCornerRadius(corner);
+        fallback.setStroke(Math.max(1, Math.round(.5f * density)), 0x59000000);
+        panel.setBackground(fallback);
+        Runnable prepare = () -> apply(window, root, panel, style, corner, material -> {
+            panel.setBackground(material);
+            PopupMaterial glass = (PopupMaterial) material;
+            glass.setMaterialTint(SIDEBAR_TINT);
+            glass.setSidebarGlassProgress(1f);
+            glass.setSidebarGlass(panel.getWidth(), panel.getHeight(), corner, () -> { });
+        }, () -> { });
+        if (panel.isAttachedToWindow()) panel.post(prepare);
+        else panel.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
+            @Override public void onViewAttachedToWindow(View view) {
+                view.removeOnAttachStateChangeListener(this);
+                view.post(prepare);
+            }
+            @Override public void onViewDetachedFromWindow(View view) { }
+        });
+    }
+
     static final ExecutorService RENDERER = Executors.newSingleThreadExecutor(task ->
             new Thread(task, "TVHomeGlass"));
     private final Bitmap backdrop;

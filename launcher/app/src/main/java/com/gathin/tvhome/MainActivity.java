@@ -3797,7 +3797,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     }
 
     private PopupWindow glassPopup(View panel, int width) {
-        PopupMaterial.apply(getWindow(), root, panel, popupStyle);
+        return glassPopup(panel, width, false);
+    }
+
+    private PopupWindow glassPopup(View panel, int width, boolean actionMenu) {
+        if (!actionMenu) PopupMaterial.apply(getWindow(), root, panel, popupStyle);
         final PopupWindow popup = new PopupWindow(CursorSounds.wrap(panel), width, ViewGroup.LayoutParams.WRAP_CONTENT, true);
         popup.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));   // needed for Back to dismiss
         popup.setOutsideTouchable(true);
@@ -3909,7 +3913,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         LinearLayout rows = panel.findViewById(R.id.rows);
         boolean restoreWatchNext = watchNextEnabled && !WatchNextDismissals.load(this).isEmpty();
         int minimumWidth = restoreWatchNext ? 300 : 200;
-        PopupWindow popup = glassPopup(panel, (int) (minimumWidth * density));
+        PopupWindow popup = glassPopup(panel, (int) (minimumWidth * density), true);
         if (!launcherSettingsButton) addSettingsMenuRow(rows, popup, R.string.launcher_settings, () -> startActivityForResult(
                 new Intent(this, LauncherSettingsActivity.class), LAUNCHER_SETTINGS_REQUEST));
         // Firmware that ships its own settings app next to the AOSP one (Xiaomi China is one): the
@@ -3938,6 +3942,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         // A launcher may not restart the TV itself; the Home key helper can open the system power menu instead.
         if (HomeKeyService.canOpenPowerMenu()) addSettingsMenuRow(rows, popup, R.string.power_menu, HomeKeyService::openPowerMenu);
+        PopupMaterial.applyActions(getWindow(), root, panel, popupStyle);
         panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
         popup.setWidth(Math.max((int) (minimumWidth * density), panel.getMeasuredWidth()));
         // Hebrew puts Settings at the left of the header: grow the menu inward from it.
@@ -4064,7 +4069,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         View panel = getLayoutInflater().inflate(R.layout.popup_inputs, root, false);
         UiFont.apply(panel);
         LinearLayout rows = panel.findViewById(R.id.rows);
-        PopupWindow popup = glassPopup(panel, (int) (200 * density));
+        PopupWindow popup = glassPopup(panel, (int) (200 * density), true);
         if (dockRow && position < adapter.movableCount()) {
             boolean inDock = position < COLUMNS;
             addSettingsMenuRow(rows, popup, inDock ? R.string.tile_replace_in_dock : R.string.tile_add_to_dock,
@@ -4098,7 +4103,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         View panel = getLayoutInflater().inflate(R.layout.popup_inputs, root, false);
         UiFont.apply(panel);
         LinearLayout rows = panel.findViewById(R.id.rows);
-        PopupWindow popup = glassPopup(panel, (int) (300 * density));
+        PopupWindow popup = glassPopup(panel, (int) (300 * density), true);
         addSettingsMenuRow(rows, popup, R.string.watch_next_remove, () -> {
             if (!watchNextRow.remove(card)) Toast.makeText(this, R.string.watch_next_save_failed, Toast.LENGTH_LONG).show();
         });
@@ -4108,6 +4113,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     }
 
     private void showTileMenu(View panel, LinearLayout rows, PopupWindow popup, View card, int minimumWidthDp) {
+        PopupMaterial.applyActions(getWindow(), root, panel, popupStyle);
         panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
         popup.setWidth(Math.max((int) (minimumWidthDp * density), panel.getMeasuredWidth()));
         // Dock tiles sit near the bottom of the screen: open the menu above the tile when it would not fit below.

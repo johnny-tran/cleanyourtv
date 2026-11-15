@@ -51,6 +51,7 @@ New files (cannot conflict):
 - `launcher/app/src/main/java/com/gathin/tvhome/HomeHeader.java` — opt-in greeting, clock/avatar pill and anchored glass sidebar.
 - `launcher/app/src/main/java/com/gathin/tvhome/DockLayout.java` and `DockBackdrop.java` — dark dock geometry and cached blurred material.
 - `launcher/app/src/main/java/com/gathin/tvhome/TileShadow.java` — card-local focus shadow and cached resting radiosity.
+- `launcher/app/src/main/res/drawable/action_row_bg.xml` — simple focused fill for Glass action menus, preserving original row corners.
 - `launcher/app/src/main/res/drawable/watch_scrim.xml` — large-card metadata gradient.
 - `launcher/app/src/main/res/values/dimens.xml` and `ids.xml` — shared popup radii and tile-shadow tag.
 - `launcher/app/src/main/java/com/gathin/tvhome/CursorSounds.java` — saved launcher-only navigation sound toggle and silent framework focus fallback.
@@ -784,3 +785,23 @@ Sony Android TV 12; injected checks cover all sidebar rows, reverse close and Ap
 Private screenshots `shots/193-sidebar-glass-restored-inputs.png` through
 `196-sidebar-glass-restored-closed.png` capture the states. TV returned to confirmed sleep.
 Figma remains unchanged; physical-remote feel and performance profiling remain untested.
+
+### Sidebar container material for long-press menus
+
+`PopupMaterial.applyActions` shares the sidebar's 55% black tint, cached inset lighting, outline,
+29dp outer radius and 8dp outer padding with app-card, Watch Next, avatar and App Library action
+menus. `HomeHeader.java` references those shared container constants. Existing generic popups,
+Input menus and Classic container styling remain unchanged; capture failures retain a static panel.
+
+Action buttons keep their original 42dp height, 21dp corners, zero inter-row gap, transparent inactive
+state, text size, tracking and internal padding. Only the focused fill changes to 80% white in Glass,
+using `action_row_bg.xml`, and titles use the sidebar's configured medium font family in both modes.
+Sidebar button bevels, strokes, shadows and row spacing are deliberately not copied.
+
+Validation: release build, zero-error lint and 368 JVM tests pass (623,545-byte APK).
+All 61 focused documentation checks pass. Installed on Sony BRAVIA Android TV 12: app-card,
+Watch Next, avatar and App Library menus retain 84px rows, zero row gaps and 16px outer padding
+at 1080p; focus movement and dismiss/return paths pass. Private screenshots:
+`shots/225-action-sidebar-app-first.png` through `231-action-sidebar-sidebar-reference.png`.
+TV returned to confirmed sleep. Physical hold behavior, Classic and RTL were not retested;
+injected Menu opened app/Watch Next actions, while avatar/Library used injected long-press.

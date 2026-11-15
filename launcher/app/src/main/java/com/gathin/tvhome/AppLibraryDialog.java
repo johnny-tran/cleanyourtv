@@ -527,7 +527,6 @@ final class AppLibraryDialog {
         View menuPanel = activity.getLayoutInflater().inflate(R.layout.popup_inputs, panel, false);
         UiFont.apply(menuPanel);
         LinearLayout rows = menuPanel.findViewById(R.id.rows);
-        PopupMaterial.apply(activity.getWindow(), activity.getWindow().getDecorView(), menuPanel, popupStyle);
         PopupWindow menu = new PopupWindow(CursorSounds.wrap(menuPanel), dp(220), ViewGroup.LayoutParams.WRAP_CONTENT, true);
         actionPopup = menu;
         menu.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
@@ -552,6 +551,7 @@ final class AppLibraryDialog {
                 Toast.makeText(activity, activity.getString(R.string.cant_open, label(app)), Toast.LENGTH_SHORT).show();
             }
         });
+        PopupMaterial.applyActions(activity.getWindow(), activity.getWindow().getDecorView(), menuPanel, popupStyle);
         int menuWidth = dp(220);
         for (int i = 0; i < rows.getChildCount(); i++) {
             TextView title = rows.getChildAt(i).findViewById(R.id.title);
