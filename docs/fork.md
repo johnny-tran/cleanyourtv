@@ -50,7 +50,7 @@ else comes from upstream untouched, so all of upstream's new features arrive wit
 New files (cannot conflict):
 - `launcher/app/src/main/java/com/gathin/tvhome/HomeHeader.java` — opt-in greeting, clock/avatar pill and anchored glass sidebar.
 - `launcher/app/src/main/java/com/gathin/tvhome/DockLayout.java` and `DockBackdrop.java` — dark dock geometry and cached blurred material.
-- `launcher/app/src/main/java/com/gathin/tvhome/GlassEdge.java` — shared directional, feathered glass edges for the dark dock and app tiles.
+- `launcher/app/src/main/java/com/gathin/tvhome/GlassEdge.java` — directional, feathered glass edges for focused Home app tiles.
 - `launcher/app/src/main/java/com/gathin/tvhome/TileShadow.java` — card-local focus shadow and cached resting radiosity.
 - `launcher/app/src/main/res/drawable/action_row_bg.xml` — simple focused fill for Glass action menus, preserving original row corners.
 - `launcher/app/src/main/res/drawable/watch_scrim.xml` — large-card metadata gradient.
@@ -964,3 +964,13 @@ cover initial state, first/neighbor focus and the grid below. Pixel assertions m
 card to the pre-edge baseline, preserve the prior focused treatment exactly, and confirm the old
 card's edge clears after focus moves (excluding the neighbor's overlapping shadow). TV returned
 to confirmed sleep. Physical-remote feel, reduced/disabled animations and performance were not tested.
+
+
+Dock edge rollback: `DockDecoration.java` restores the original uniform inside stroke: 1dp
+(2px at the tested 1080p density), white at 10% opacity, concentric with the dark dock.
+The thicker directional feathered dock edge is removed; focused Home app-card outlines
+still use `GlassEdge.java`. Dock fill, blur, opacity and geometry remain unchanged.
+
+Rollback validation: release build, lint and JVM tests pass; installed on Sony BRAVIA
+Android TV 12 and confirmed the thin dock border in `shots/260-dock-original-border.png`.
+The TV was left on for user review. Physical-remote behavior and performance were not retested.
