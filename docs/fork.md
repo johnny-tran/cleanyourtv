@@ -848,3 +848,14 @@ Follow-up: increased open diameter from 58px to 62px (another 2px outward per si
 50px closed. Build, lint, 368 JVM tests and 61 documentation checks pass (622,821-byte APK).
 Installed on the same TV; `shots/205-avatar-62-open.png` confirms open-state clearance. Reverse close
 checked and TV returned to confirmed sleep. Physical-remote feel and Figma remain unchecked/unchanged.
+
+
+### Consistent App Library capitalization
+
+`res/values/strings.xml` changes the shared English `app_library` label to **App Library**, matching
+the sidebar. This updates the library heading and the existing card-label reference together;
+translations, behavior and layout are unchanged.
+Validation: release build, zero-error lint, 368 JVM tests and 61 documentation checks pass
+(622,805-byte APK). Installed on Sony Android TV 12; opening App Library via the sidebar confirms
+**App Library** in its UI hierarchy. Private screenshot: `shots/206-app-library-heading.png`.
+Library closed and TV returned to confirmed sleep. Other locales and physical-remote feel unchecked.
