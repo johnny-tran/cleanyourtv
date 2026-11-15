@@ -831,3 +831,20 @@ leaving/returning Home, with no artwork warnings from the launcher process. Priv
 checks pass. The isolated test package was disabled afterward and the TV returned to confirmed sleep.
 The original intermittent startup failure was not reproduced; prolonged outages, expired provider URLs
 and physical-remote feel remain unverified. Retries cannot recover artwork that its source no longer serves.
+
+
+### Expanded sidebar avatar
+
+`HomeHeader.java` scales the circular profile photo from 50px closed to 62px open at the 1920px design
+size, interpolating on the existing reversible sidebar morph. Scaling uses the avatar view's center;
+its layout box, profile padding, center anchor, clock/name positions and other material styles stay
+unchanged. The extra 12px is diameter (6px outward on each side), with no new setting.
+Validation: release build, zero-error lint, 368 JVM tests and 61 documentation checks pass
+(622,825-byte APK). Installed on Sony Android TV 12; closed/open/reverse-close screenshots
+`shots/202-avatar-scale-closed.png`, `203-avatar-scale-open.png` and `204-avatar-scale-return.png`
+confirm the centered enlargement and return. TV returned to confirmed sleep. Physical-remote feel
+and Figma synchronization remain unverified/unchanged.
+Follow-up: increased open diameter from 58px to 62px (another 2px outward per side), retaining
+50px closed. Build, lint, 368 JVM tests and 61 documentation checks pass (622,821-byte APK).
+Installed on the same TV; `shots/205-avatar-62-open.png` confirms open-state clearance. Reverse close
+checked and TV returned to confirmed sleep. Physical-remote feel and Figma remain unchecked/unchanged.

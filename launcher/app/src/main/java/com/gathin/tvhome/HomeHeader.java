@@ -381,7 +381,8 @@ final class HomeHeader {
             clock.setTranslationX(clockDx * (1f - value)); clock.setTranslationY(clockDy * (1f - value));
             clock.setTextColor((int) colors.evaluate(materialPhase, Color.BLACK, Color.WHITE));
             avatar.setTranslationX(avatarDx * (1f - value)); avatar.setTranslationY(avatarDy * (1f - value));
-            avatar.setScaleX(mix(avatarScale, 1, value)); avatar.setScaleY(mix(avatarScale, 1, value));
+            float scale = mix(avatarScale, 62f / 50f, value);
+            avatar.setScaleX(scale); avatar.setScaleY(scale);
             name.setTranslationX(nameDx * (1f - value)); name.setAlpha(value);
             rows.setAlpha(rowAlpha(value, rowMaterialsReady));
             rows.setTranslationY(-dp(8) * (1f - value));
