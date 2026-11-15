@@ -727,3 +727,28 @@ retains Off. Toggling back restores On and normal menu navigation; the TV-wide s
 unchanged. Private screenshot: `shots/cursor-sounds-off.png`. Original On setting restored and TV
 returned to confirmed sleep. Actual audible output and physical-remote behavior need user acceptance;
 other devices and settings confirmation dialogs were not tested.
+
+
+### App Library grows the focused card
+
+`AppLibraryDialog.java` replaces its floating `GlassView` and spring with card-local enlargement.
+`MainActivity.java` supplies Home's current scale through `AppAdapter.focusScale()` / `TileFocus.scale()`.
+Focus adds no ring, halo or glass surface. Normal motion uses a decelerated 260ms grow / 180ms return;
+reduced motion uses the existing short timings, and disabled animations keep the resting size.
+Rebinding resets recycled card scales. Existing card fills, badges, actions and container material
+are unchanged.
+
+Card margins are 10dp per side, producing a 20dp / 40px resting gap at the 1920px design size.
+List side padding compensates to preserve the original resting end insets. Vertical clearance is
+22dp and container height is 308dp, leaving room for the enlarged card. Focus scrolling accounts for
+its final scaled bounds; an idle-scroll callback restores the selected card if rapid recycling loses
+focus, without stealing focus from an action menu. Panel-edge clipping remains intact.
+
+Validation on Sony BRAVIA Android TV 12: release build, zero-error lint, all 368 JVM tests and 61
+focused documentation checks pass (622,713-byte APK, built with the other pending local changes).
+With the final 40px spacing, UI bounds confirm consecutive gaps, a 24px next-card peek and 10px
+clearance beside the focused card, with no overlap when moving to its neighbor. Private screenshots:
+`shots/221-library-grow-first.png` and `222-library-grow-neighbor.png`. Earlier edge/rapid-burst
+checks at the wider spacing confirmed full 324x416px focused cards and focus recovery; those stress
+checks were not repeated at 40px. TV returned to confirmed sleep. Physical-remote feel, RTL,
+reduced-motion and disabled-animation device configurations remain unverified.
