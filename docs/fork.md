@@ -899,3 +899,21 @@ then restore the original 100%. `shots/235-dock-fill-100.png`, `236-dock-fill-30
 wallpaper details are sharper inside the dock and an opaque tile crop remains byte-identical.
 TV returned to confirmed sleep. Other devices, performance profiling and capture-failure fallback
 were not tested.
+
+
+### Header aligns with resting Watch Next artwork
+
+`MainActivity.java` passes the existing dark-dock/Watch Next resting-card inset to
+`HomeHeader.setHorizontalInset`. The greeting's left margin and closed clock/avatar pill's right
+margin share that inset, tracking column/viewport changes without copying a fixed pixel value.
+The expanded sidebar moves by the same delta, retaining its 11.5dp extension beyond the pill and
+preserving the avatar's anchored morph. Vertical positions, typography, sizes and internal padding
+are unchanged. The standard header/non-dark dock layout retains its previous margins.
+
+Validation: release build, zero-error lint, 370 JVM tests and 61 focused documentation checks pass
+(623,653-byte APK). Installed on Sony BRAVIA Android TV 12; UI bounds confirm a 90px greeting/card
+left inset and matching 90px closed-pill right inset. Sidebar opening/reverse close retain that
+alignment. Private screenshots `shots/238-action-sidebar-header-aligned.png`,
+`239-action-sidebar-header-sidebar.png` and `240-action-sidebar-header-return.png` capture the states.
+The first startup capture preceded Watch Next population; a subsequent capture verified the cards.
+TV returned to confirmed sleep. Other column counts, RTL and physical-remote feel were not retested.

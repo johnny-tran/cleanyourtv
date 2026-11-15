@@ -45,6 +45,7 @@ final class HomeHeader {
     private final TextView greeting;
     private final TextClock pillClock;
     private final ImageView pillAvatar;
+    private int horizontalInset;
     private boolean sidebarOpen;
     private boolean validClock = true;
 
@@ -59,6 +60,7 @@ final class HomeHeader {
         this.settings = settings;
         this.launcherMenu = launcherMenu;
         density = activity.getResources().getDisplayMetrics().density;
+        horizontalInset = dp(25);
         assets = new File(activity.getExternalFilesDir(null), "header-assets");
         medium = UiFont.get(activity, R.string.font_medium);
         greeting = text("", 15, medium);
@@ -98,6 +100,17 @@ final class HomeHeader {
         });
     }
 
+    void setHorizontalInset(int inset) {
+        if (horizontalInset == inset) return;
+        horizontalInset = inset;
+        FrameLayout.LayoutParams greetingParams = (FrameLayout.LayoutParams) greeting.getLayoutParams();
+        greetingParams.leftMargin = inset;
+        greeting.setLayoutParams(greetingParams);
+        FrameLayout.LayoutParams pillParams = (FrameLayout.LayoutParams) pill.getLayoutParams();
+        pillParams.rightMargin = inset;
+        pill.setLayoutParams(pillParams);
+    }
+
     void updateGreeting(CharSequence value, boolean valid) {
         validClock = valid;
         greeting.setText(value);
@@ -117,7 +130,7 @@ final class HomeHeader {
         panel.addView(content, new FrameLayout.LayoutParams(-1, -2));
         panel.setClickable(true);
         FrameLayout.LayoutParams position = new FrameLayout.LayoutParams(dp(220), -2, Gravity.TOP | Gravity.END);
-        position.topMargin = dp(13.5f); position.rightMargin = dp(13.5f);
+        position.topMargin = dp(13.5f); position.rightMargin = Math.max(0, horizontalInset - dp(11.5f));
         wrapper.addView(panel, position);
 
         LinearLayout profile = new LinearLayout(activity);

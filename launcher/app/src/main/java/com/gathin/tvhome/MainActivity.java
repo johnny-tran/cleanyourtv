@@ -762,6 +762,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     : AppAdapter.tileWidthPx(inner, h, COLUMNS, rowsBelowDock, cfg.dockTitle, cfg.dockRow, density);
             if (darkDock) {
                 int inset = (root.getWidth() - inner) / 2 + (inner / COLUMNS - tileW) / 2;
+                if (homeHeader != null) homeHeader.setHorizontalInset(inset);
                 View watchRow = findViewById(R.id.watchRow);
                 if (watchRow.getPaddingStart() != inset)
                     watchRow.setPaddingRelative(inset, watchRow.getPaddingTop(), watchRow.getPaddingEnd(), watchRow.getPaddingBottom());
